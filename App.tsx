@@ -11,14 +11,24 @@ import { PickupOrderSection } from './components/PickupOrderSection';
 import { DashboardView } from './components/DashboardView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { CourierDashboard } from './components/CourierDashboard';
+import { CourierLoginModal } from './components/CourierLoginModal';
 import { WorkshopLocationSection } from './components/WorkshopLocationSection';
 import { TestimonialsAndFaq } from './components/TestimonialsAndFaq';
 import { CustomerTrackerModal } from './components/CustomerTrackerModal';
+import { StaffAccessModal } from './components/StaffAccessModal';
+import { CustomerAuthModal } from './components/CustomerAuthModal';
+import { CustomerProfileDrawer } from './components/CustomerProfileDrawer';
+import { AppInstallModal } from './components/AppInstallModal';
+import { WaConsultationBotModal } from './components/WaConsultationBotModal';
+import { SolemanLogo } from './components/SolemanLogo';
 import { Footer } from './components/Footer';
-import { INITIAL_ORDERS, WORKSHOP_INFO } from './data/solcreftData';
-import { Order, OrderStatus, ServiceItem, ShoeType, AdminUser } from './types';
+import { INITIAL_ORDERS, WORKSHOP_INFO, SERVICES_CATALOG } from './data/solcreftData';
+import { Order, OrderStatus, ServiceItem, ShoeType, AdminUser, CourierUser, CustomerUser, PaymentStatus } from './types';
 import { adminAuthService } from './services/adminAuthService';
-import { MessageSquare, Phone, Truck, Lock, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { courierAuthService } from './services/courierAuthService';
+import { customerAuthService } from './services/customerAuthService';
+import { MessageSquare, Phone, Truck, Lock, ShieldCheck, CheckCircle2, Bot, Smartphone, LogOut, Wrench } from 'lucide-react';
 
 const STORAGE_KEY = 'solcreft_orders_cirebon_v1';
 
@@ -41,6 +51,37 @@ export const App: React.FC = () => {
     return adminAuthService.getCurrentUser();
   });
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+
+  // Courier Authentication State
+  const [courierUser, setCourierUser] = useState<CourierUser | null>(() => {
+    return courierAuthService.getCurrentUser();
+  });
+  const [isCourierLoginModalOpen, setIsCourierLoginModalOpen] = useState(false);
+  const [isStaffAccessModalOpen, setIsStaffAccessModalOpen] = useState(false);
+
+  // Customer Authentication State (Sederhana & Berkeamanan Tinggi)
+  const [customerUser, setCustomerUser] = useState<CustomerUser | null>(() => {
+    return customerAuthService.getCurrentUser();
+  });
+  const [isCustomerAuthModalOpen, setIsCustomerAuthModalOpen] = useState(false);
+  const [isCustomerProfileOpen, setIsCustomerProfileOpen] = useState(false);
+
+  // PWA / App Install Modal State
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  // WhatsApp Damage Consultation Bot Modal State
+  const [isWaBotModalOpen, setIsWaBotModalOpen] = useState(false);
+
+  // Listen for PWA beforeinstallprompt event
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
 
   // Navigation & Modal State
   const [activeTab, setActiveTab] = useState<string>('layanan');
@@ -67,11 +108,14 @@ export const App: React.FC = () => {
 
   // Handle adding new order
   const handleOrderCreated = (newOrder: Order) => {
-    setOrders(prev => [newOrder, ...prev]);
+    const orderWithCustomer = customerUser && !newOrder.customerId
+      ? { ...newOrder, customerId: customerUser.id }
+      : newOrder;
+    setOrders(prev => [orderWithCustomer, ...prev]);
   };
 
   // Handle accepting order by Admin
-  const handleAcceptOrder = (orderId: string, courierName: string, courierPhone: string) => {
+  const handleAcceptOrder = (orderId: string, courierName: string = 'Kurir Soleman', courierPhone: string = '08814519955') => {
     const timeStr = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
     setOrders(prev => prev.map(order => {
       if (order.id !== orderId) return order;
@@ -80,7 +124,7 @@ export const App: React.FC = () => {
         status: 'perjalanan_workshop' as OrderStatus,
         label: 'Pesanan Diterima Admin',
         timestamp: timeStr,
-        description: `Pesanan diterima & dikonfirmasi oleh Admin. Kurir ${courierName} ditugaskan untuk penjemputan.`
+        description: `Pesanan diterima & dikonfirmasi oleh Admin. ${courierName} ditugaskan untuk penjemputan.`
       };
 
       return {
@@ -117,7 +161,7 @@ export const App: React.FC = () => {
     }));
   };
 
-  // Handle updating order status (from Dashboard)
+  // Handle updating order status (from Dashboard Kurir / Admin)
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus, customNote?: string) => {
     setOrders(prev => prev.map(order => {
       if (order.id !== orderId) return order;
@@ -133,6 +177,17 @@ export const App: React.FC = () => {
         ...order,
         status: newStatus,
         timeline: [newTimelineItem, ...order.timeline]
+      };
+    }));
+  };
+
+  // Handle updating payment status (from Courier or Admin)
+  const handleUpdatePaymentStatus = (orderId: string, paymentStatus: PaymentStatus) => {
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      return {
+        ...order,
+        paymentStatus
       };
     }));
   };
@@ -154,13 +209,13 @@ export const App: React.FC = () => {
       case 'menunggu_jemput':
         return `Penjemputan dijadwalkan di ${order.location.areaName}.`;
       case 'perjalanan_workshop':
-        return `Kurir Herdi (Soleman) sedang mengambil sepatu di ${order.location.fullAddress}.`;
+        return `Kurir Soleman sedang mengambil sepatu di ${order.location.fullAddress}.`;
       case 'pengerjaan':
         return `Sepatu ${order.shoeBrand} sedang ditangani teknisi dengan lem/jahit standar pabrik.`;
       case 'quality_check':
         return `Pemeriksaan kerapian dan sterilisasi anti-jamur selesai.`;
       case 'siap_antar':
-        return `Sepatu selesai direparasi dan dijadwalkan pengantaran kembali oleh kurir Herdi.`;
+        return `Sepatu selesai direparasi dan dijadwalkan pengantaran kembali oleh Kurir Soleman.`;
       case 'selesai':
         return `Sepatu telah diserahterimakan kepada ${order.customerName}. Garansi servis Soleman aktif.`;
       default:
@@ -189,9 +244,9 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleLoginSuccess = (user: AdminUser) => {
+  const handleAdminLoginSuccess = (user: AdminUser) => {
     setAdminUser(user);
-    handleScrollToSection('dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAdminLogout = () => {
@@ -199,49 +254,61 @@ export const App: React.FC = () => {
     setAdminUser(null);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      
-      {/* Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={handleScrollToSection}
-        onOpenBooking={() => handleScrollToSection('antar-jemput')}
-        onOpenTracker={() => { setTrackerQuery(''); setIsTrackerOpen(true); }}
-        ordersCount={orders.length}
-        adminUser={adminUser}
-        onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
-        onAdminLogout={handleAdminLogout}
-        pendingOrdersCount={pendingOrdersCount}
-      />
+  const handleCourierLoginSuccess = (user: CourierUser) => {
+    setCourierUser(user);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-      {/* Main Content Sections */}
-      <main className="flex-1">
-        {/* 1. Hero Section with Quick Tracker & CTAs */}
-        <Hero
-          onOpenBooking={() => handleScrollToSection('antar-jemput')}
-          onSearchOrder={handleSearchOrder}
-          onExploreServices={() => handleScrollToSection('layanan')}
-          onOpenDashboard={() => handleScrollToSection('dashboard')}
-        />
+  const handleCourierLogout = () => {
+    courierAuthService.logout();
+    setCourierUser(null);
+  };
 
-        {/* 2. Full Damage Catalog & Repair Services */}
-        <DamageCatalog
-          onSelectServiceForPickup={handleSelectServiceForPickup}
-        />
+  const handleCustomerLogout = () => {
+    customerAuthService.logout();
+    setCustomerUser(null);
+    setIsCustomerProfileOpen(false);
+  };
 
-        {/* 3. Pickup & Delivery Booking with GPS Location & Kirim Order Langsung ke Dashboard Admin */}
-        <PickupOrderSection
-          initialServices={preselectedServices}
-          initialShoeType={preselectedShoeType}
-          initialPairsCount={preselectedPairsCount}
-          initialArea={preselectedArea}
-          onOrderCreated={handleOrderCreated}
-          onOpenDashboard={() => handleScrollToSection('dashboard')}
-        />
+  // =========================================================================
+  // 1. TAMPILAN KHUSUS ADMIN WORKSHOP (Fokus HANYA Fitur Admin, Tanpa Landing Pelanggan)
+  // =========================================================================
+  if (adminUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        {/* Dedicated Admin Portal Header Bar */}
+        <header className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-amber-500/30 px-4 py-3 shadow-xl">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <SolemanLogo size="sm" />
+              <div className="border-l border-slate-700 pl-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
+                    Portal Khusus Admin Workshop
+                  </span>
+                  <span className="text-xs font-bold text-white hidden sm:inline">Soleman Cirebon</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Login: <strong className="text-amber-400">{adminUser.name}</strong> ({adminUser.email})
+                </div>
+              </div>
+            </div>
 
-        {/* 4. DASHBOARD AREA: Special Admin Dashboard when authenticated, otherwise Courier view + Admin Login Access */}
-        {adminUser ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleAdminLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 font-bold text-xs transition-all"
+                title="Keluar dari portal Admin"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar (Logout Admin)</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Exclusive Admin Dashboard Area */}
+        <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
           <AdminDashboard
             adminUser={adminUser}
             orders={orders}
@@ -249,60 +316,150 @@ export const App: React.FC = () => {
             onAcceptOrder={handleAcceptOrder}
             onRejectOrder={handleRejectOrder}
             onLogout={handleAdminLogout}
-            onOpenCreateOrder={() => handleScrollToSection('antar-jemput')}
+            onOpenCreateOrder={() => {}}
             onOrderCreated={handleOrderCreated}
           />
-        ) : (
-          <div className="relative">
-            {/* Admin Login Callout Banner */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-slate-900 to-sky-500/15 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                      <span>Area Khusus Admin Soleman</span>
-                      {pendingOrdersCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold animate-pulse">
-                          {pendingOrdersCount} Pesanan Baru Perlu Diterima
-                        </span>
-                      )}
-                    </h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Masuk untuk menerima pesanan, menugaskan kurir Herdi, dan kirim konfirmasi WhatsApp resmi.
-                    </p>
-                  </div>
-                </div>
+        </main>
+      </div>
+    );
+  }
 
-                <button
-                  onClick={() => setIsAdminLoginModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 transition-all shrink-0"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Login Dashboard Admin</span>
-                </button>
+  // =========================================================================
+  // 2. TAMPILAN KHUSUS KURIR SOLEMAN (Fokus HANYA Fitur Kurir, Tanpa Landing Pelanggan)
+  // =========================================================================
+  if (courierUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        {/* Dedicated Courier Portal Header Bar */}
+        <header className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-amber-500/30 px-4 py-3 shadow-xl">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <SolemanLogo size="sm" />
+              <div className="border-l border-slate-700 pl-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
+                    Portal Khusus Kurir Soleman
+                  </span>
+                  <span className="text-xs font-bold text-white hidden sm:inline">Rute & Antar-Jemput</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Petugas Kurir: <strong className="text-amber-400">{courierUser.name}</strong> (@{courierUser.username})
+                </div>
               </div>
             </div>
 
-            <DashboardView
-              orders={orders}
-              onUpdateOrderStatus={handleUpdateOrderStatus}
-              onOpenBooking={() => handleScrollToSection('antar-jemput')}
-            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCourierLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 font-bold text-xs transition-all"
+                title="Keluar dari portal Kurir"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar (Logout Kurir)</span>
+              </button>
+            </div>
           </div>
-        )}
+        </header>
 
-        {/* 5. Physical Workshop & Coverage Section */}
+        {/* Exclusive Courier Dashboard Area */}
+        <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+          <CourierDashboard
+            courierUser={courierUser}
+            orders={orders}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onUpdatePaymentStatus={handleUpdatePaymentStatus}
+            onLogout={handleCourierLogout}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 3. TAMPILAN WEBSITE PELANGGAN (Menu Admin & Kurir Disembunyikan di Logo)
+  // =========================================================================
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      
+      {/* Navbar Pelanggan: Bersih tanpa tombol Admin/Kurir (Akses staf hanya via klik logo Soleman) */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={handleScrollToSection}
+        onOpenBooking={() => handleScrollToSection('antar-jemput')}
+        onOpenTracker={() => { setTrackerQuery(''); setIsTrackerOpen(true); }}
+        ordersCount={orders.length}
+        adminUser={null}
+        courierUser={null}
+        customerUser={customerUser}
+        onAdminLogout={handleAdminLogout}
+        onCourierLogout={handleCourierLogout}
+        onOpenStaffPortal={() => setIsStaffAccessModalOpen(true)}
+        onOpenCustomerAuth={() => setIsCustomerAuthModalOpen(true)}
+        onOpenCustomerProfile={() => setIsCustomerProfileOpen(true)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
+        onOpenWaBot={() => setIsWaBotModalOpen(true)}
+        pendingOrdersCount={pendingOrdersCount}
+      />
+
+      {/* Main Content Sections Pelanggan */}
+      <main className="flex-1">
+        {/* 1. Hero Section dengan Quick Tracker, Bot WA & Tombol Install Web App */}
+        <Hero
+          onOpenBooking={() => handleScrollToSection('antar-jemput')}
+          onSearchOrder={handleSearchOrder}
+          onExploreServices={() => handleScrollToSection('layanan')}
+          onOpenDashboard={() => handleScrollToSection('dashboard')}
+          onOpenWaBot={() => setIsWaBotModalOpen(true)}
+          onOpenInstallModal={() => setIsInstallModalOpen(true)}
+        />
+
+        {/* 2. Full Damage Catalog & Repair Services (Termasuk Filter "Menu Terbaik", Jahit Sol & Ganti Tapak) */}
+        <DamageCatalog
+          onSelectServiceForPickup={handleSelectServiceForPickup}
+        />
+
+        {/* 3. Booking Antar-Jemput: Pisah Trail Rp 200rb & Gunung, Konfirmasi Foto WA, Jarak Logistik (Soleman/Grab/Maxim/J&T) */}
+        <PickupOrderSection
+          initialServices={preselectedServices}
+          initialShoeType={preselectedShoeType}
+          initialPairsCount={preselectedPairsCount}
+          initialArea={preselectedArea}
+          customerUser={customerUser}
+          onOrderCreated={handleOrderCreated}
+          onOpenDashboard={() => handleScrollToSection('dashboard')}
+        />
+
+        {/* 4. DASHBOARD PELANGGAN: Hanya Pelacakan Kode Seri Sepatu yang Tepat (Privasi Terjamin, Tanpa Order Lain) */}
+        <DashboardView
+          orders={orders}
+          onOpenBooking={() => handleScrollToSection('antar-jemput')}
+        />
+
+        {/* 5. Physical Workshop & Coverage Section Cirebon */}
         <WorkshopLocationSection />
 
         {/* 6. Testimonials & FAQs */}
         <TestimonialsAndFaq />
       </main>
 
-      {/* Footer */}
-      <Footer onNavigate={handleScrollToSection} />
+      {/* Footer Pelanggan (Logo dengan trigger staff tersembunyi) */}
+      <Footer 
+        onNavigate={handleScrollToSection} 
+        onStaffAccess={() => setIsStaffAccessModalOpen(true)} 
+      />
+
+      {/* Staff Secret Portal Modal (HANYA muncul jika logo Soleman diklik khusus) */}
+      <StaffAccessModal
+        isOpen={isStaffAccessModalOpen}
+        onClose={() => setIsStaffAccessModalOpen(false)}
+        onSelectAdminLogin={() => setIsAdminLoginModalOpen(true)}
+        onSelectCourierLogin={() => setIsCourierLoginModalOpen(true)}
+        adminUser={adminUser}
+        courierUser={courierUser}
+        onAdminLogout={handleAdminLogout}
+        onCourierLogout={handleCourierLogout}
+        onOpenDashboard={() => handleScrollToSection('dashboard')}
+      />
 
       {/* Customer Tracking Modal */}
       <CustomerTrackerModal
@@ -312,28 +469,144 @@ export const App: React.FC = () => {
         initialQuery={trackerQuery}
       />
 
-      {/* Admin Login Modal (Masked Password & Secure Verification) */}
+      {/* Admin Login Modal (password Hafidahcantik87) */}
       <AdminLoginModal
         isOpen={isAdminLoginModalOpen}
         onClose={() => setIsAdminLoginModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
+        onLoginSuccess={handleAdminLoginSuccess}
       />
 
-      {/* Floating Quick WhatsApp Action Button */}
-      <a
-        href={`https://wa.me/${WORKSHOP_INFO.phone}?text=${encodeURIComponent('Halo Soleman Cirebon! Mau tanya servis sepatu dan antar-jemput kurir Herdi.')}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-full shadow-2xl shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all"
-        title="Chat WhatsApp Soleman Cirebon: 0881-4519-955"
-      >
-        <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-950 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-slate-950"></span>
-        </span>
-        <MessageSquare className="w-4 h-4 fill-slate-950" />
-        <span className="hidden sm:inline">WA Soleman: 0881-4519-955</span>
-      </a>
+      {/* Courier Login Modal (password Herdazabuza) */}
+      <CourierLoginModal
+        isOpen={isCourierLoginModalOpen}
+        onClose={() => setIsCourierLoginModalOpen(false)}
+        onLoginSuccess={handleCourierLoginSuccess}
+      />
+
+      {/* Customer Auth Modal (Daftar & Login Sederhana Standar Keamanan Tinggi FB) */}
+      <CustomerAuthModal
+        isOpen={isCustomerAuthModalOpen}
+        onClose={() => setIsCustomerAuthModalOpen(false)}
+        onAuthSuccess={(user) => {
+          setCustomerUser(user);
+          setIsCustomerAuthModalOpen(false);
+        }}
+      />
+
+      {/* Customer Profile Drawer */}
+      {customerUser && (
+        <CustomerProfileDrawer
+          isOpen={isCustomerProfileOpen}
+          onClose={() => setIsCustomerProfileOpen(false)}
+          customerUser={customerUser}
+          orders={orders}
+          onLogout={handleCustomerLogout}
+          onTrackOrder={(orderId) => {
+            setIsCustomerProfileOpen(false);
+            setTrackerQuery(orderId);
+            setIsTrackerOpen(true);
+          }}
+          onOpenBooking={() => {
+            setIsCustomerProfileOpen(false);
+            handleScrollToSection('antar-jemput');
+          }}
+        />
+      )}
+
+      {/* App Install Modal (PWA Download APK Android / iPhone iOS Add to Home) */}
+      <AppInstallModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        deferredPrompt={deferredPrompt}
+      />
+
+      {/* WhatsApp Damage Consultation Bot Modal (Konsultasi Kerusakan Sepatu Interaktif 24 Jam) */}
+      <WaConsultationBotModal
+        isOpen={isWaBotModalOpen}
+        onClose={() => setIsWaBotModalOpen(false)}
+        onBookService={(serviceId) => {
+          const found = SERVICES_CATALOG.find(s => s.id === serviceId);
+          if (found) {
+            setPreselectedServices([found]);
+            if (found.suitableShoes && found.suitableShoes.length > 0) {
+              setPreselectedShoeType(found.suitableShoes[0]);
+            }
+          }
+          setIsWaBotModalOpen(false);
+          handleScrollToSection('antar-jemput');
+        }}
+      />
+
+      {/* Floating Action Buttons: Bot WA AI + Chat WA Customer Support (Desktop) */}
+      <div className="hidden sm:flex fixed bottom-6 right-6 z-40 flex-col items-end gap-2.5">
+        {/* Floating Gemini AI Vision Konsultasi */}
+        <button
+          onClick={() => setIsWaBotModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs rounded-full shadow-2xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300/40 cursor-pointer"
+          title="Tanya Gemini AI & Unggah Foto Kerusakan Sepatu 24 Jam"
+        >
+          <Bot className="w-4 h-4 text-slate-950" />
+          <span>📸 Gemini AI Vision: Foto & Cek Menu</span>
+        </button>
+
+        {/* Floating Direct WhatsApp CS Workshop */}
+        <a
+          href={`https://wa.me/${WORKSHOP_INFO.phone}?text=${encodeURIComponent('Halo Soleman Cirebon! Mau tanya servis sepatu dan antar-jemput Kurir Soleman.')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-full shadow-2xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300/40"
+          title="Chat WhatsApp Soleman Cirebon: 0881-4519-955"
+        >
+          <MessageSquare className="w-4 h-4 fill-slate-950" />
+          <span>WA: 0881-4519-955</span>
+        </a>
+      </div>
+
+      {/* Mobile & APK Native Bottom Navigation Bar */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-2 py-2 flex items-center justify-around text-[10px] font-bold">
+        <button
+          onClick={() => handleScrollToSection('layanan')}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-white"
+        >
+          <Wrench className="w-4 h-4 text-amber-400" />
+          <span>Menu</span>
+        </button>
+
+        <button
+          onClick={() => setIsWaBotModalOpen(true)}
+          className="flex flex-col items-center gap-1 text-amber-400 font-extrabold relative"
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-400 absolute top-0 right-2 animate-ping" />
+          <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+            <Bot className="w-4 h-4" />
+          </div>
+          <span>Foto AI</span>
+        </button>
+
+        <button
+          onClick={() => handleScrollToSection('antar-jemput')}
+          className="flex flex-col items-center gap-1 text-amber-400"
+        >
+          <Truck className="w-4 h-4" />
+          <span>Jemput</span>
+        </button>
+
+        <button
+          onClick={() => { setTrackerQuery(''); setIsTrackerOpen(true); }}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-white"
+        >
+          <CheckCircle2 className="w-4 h-4 text-sky-400" />
+          <span>Lacak</span>
+        </button>
+
+        <button
+          onClick={() => setIsInstallModalOpen(true)}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-white"
+        >
+          <Smartphone className="w-4 h-4 text-amber-400" />
+          <span>APK</span>
+        </button>
+      </div>
 
     </div>
   );

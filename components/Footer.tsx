@@ -10,9 +10,10 @@ import { SolemanLogo } from './SolemanLogo';
 
 interface FooterProps {
   onNavigate: (sectionId: string) => void;
+  onStaffAccess?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onStaffAccess }) => {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -24,7 +25,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           
           {/* Brand Info (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
-            <SolemanLogo size="md" />
+            <SolemanLogo size="md" onStaffAccess={onStaffAccess} />
 
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
               Solusi tuntas untuk reglue sol menganga, jahit sol keliling, resoling baru, unyellowing, deep clean, dan restorasi bahan kulit/kanvas dengan teknologi thermo-press standar pabrik di Cirebon.
@@ -65,7 +66,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   onClick={() => onNavigate('antar-jemput')} 
                   className="hover:text-amber-400 transition-colors text-left"
                 >
-                  Form Antar-Jemput (Auto Lokasi GPS)
+                  Form Antar-Jemput (Lokasi Otomatis via WA)
                 </button>
               </li>
               <li>
@@ -73,7 +74,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   onClick={() => onNavigate('dashboard')} 
                   className="hover:text-amber-400 transition-colors text-left"
                 >
-                  Dashboard Kurir & Notif WA
+                  Lacak Status Sepatu & Progres
                 </button>
               </li>
               <li>
@@ -90,7 +91,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Coverage Cirebon (4 cols) */}
           <div className="lg:col-span-4 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-white block">
-              Area Antar-Jemput Kurir Herdi
+              Area Antar-Jemput Kurir Soleman
             </span>
             <p className="text-xs text-slate-400 leading-relaxed">
               Melayani penjemputan cepat ke rumah & kantor di Kejaksan, Kesambi, Harjamukti, Lemahwungkuk, Pekalipan, Kedawung, Tuparev, Weru, Plered, Tengah Tani, Sumber, Gunungjati, dan sekitarnya se-Cirebon.

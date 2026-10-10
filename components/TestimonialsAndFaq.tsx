@@ -24,21 +24,21 @@ export const TestimonialsAndFaq: React.FC = () => {
       name: 'Rian Hidayat',
       area: 'Kedawung / Tuparev, Cirebon',
       shoe: 'Nike Air Jordan 1 High (Reglue & Unyellowing)',
-      comment: 'Gokil hasilnya! Sol yang udah mangap parah gara-gara kena hujan di Tuparev sekarang nempel kenceng kayak baru. Midsole-nya juga kinclong lagi. Kurirnya tepat waktu jemput ke rumah.',
+      comment: 'Gokil hasilnya! Sol yang udah mangap parah gara-gara kena hujan di Tuparev sekarang nempel kenceng kayak baru. Midsole-nya juga kinclong lagi. Kurir Soleman tepat waktu jemput ke rumah dan bisa bayar COD santai.',
       rating: 5,
     },
     {
       name: 'Dinda Lestari',
       area: 'Kesambi (Sunyaragi), Cirebon',
       shoe: 'Vans Old Skool & Docmart (Jahit Sol & Deep Clean)',
-      comment: 'Fitur antar jemputnya ngebantu banget pas lagi sibuk kerja. Tinggal share lokasi GPS lewat WA, kurir langsung datang. Jahitannya rapi banget dan benangnya gak keliatan kasar.',
+      comment: 'Fitur antar jemputnya ngebantu banget pas lagi sibuk kerja. Tinggal share lokasi GPS lewat WA, Kurir Soleman langsung datang. Jahitannya rapi banget dan gratis ongkir karena di Kota Cirebon.',
       rating: 5,
     },
     {
       name: 'Bambang Suryo',
       area: 'Kejaksan (Kartini), Cirebon',
       shoe: 'Pantofel Kulit Formal (Resoling & Leather Care)',
-      comment: 'Sepatu andalan ngantor solnya udah aus licin. Diganti sol baru di Soleman jadi gagah lagi. Notifikasi WA di tiap tahap pengerjaannya bikin tenang, gak perlu bolak-balik nanya progres.',
+      comment: 'Sepatu andalan ngantor solnya udah aus licin. Diganti sol baru di Soleman jadi gagah lagi. Pembayaran QRIS instan dan notifikasi di tiap tahap pengerjaannya bikin tenang, gak perlu bolak-balik nanya.',
       rating: 5,
     },
   ];
@@ -46,19 +46,19 @@ export const TestimonialsAndFaq: React.FC = () => {
   const faqs = [
     {
       q: 'Bagaimana cara kerja layanan antar-jemput sepatu di Soleman Cirebon?',
-      a: 'Sangat mudah! Anda cukup mengisi form di web ini dan upload foto sepatu, lalu klik "📍 Gunakan Lokasi Saya" untuk mengunci titik GPS rumah Anda. Pesanan langsung masuk ke dashboard admin Soleman. Kurir Herdi akan meluncur sesuai titik maps tersebut untuk mengambil sepatu Anda, dan mengantarkannya kembali setelah selesai diperbaiki.'
+      a: 'Sangat mudah! Anda cukup mengisi form di web ini, pilih bahan sepatu & upload foto, lalu kunci titik lokasi GPS rumah Anda di Cirebon. Pesanan langsung masuk ke sistem. Kurir Soleman akan meluncur sesuai titik maps tersebut untuk mengambil sepatu Anda, dan mengantarkannya kembali setelah selesai diperbaiki.'
     },
     {
       q: 'Apakah lem sol di Soleman tahan air dan tidak mudah lepas lagi?',
-      a: 'Ya, 100%! Kami tidak menggunakan lem kuning sembarangan. Soleman menggunakan lem Polyurethane (PU) grade industri pabrik sepatu, dilengkapi cairan primer asam pengikis kotoran mikroskopis dan diproses menggunakan mesin Thermo-Press bertekanan tinggi. Kami memberikan garansi servis hingga 60 - 90 hari.'
+      a: 'Ya, 100%! Kami tidak menggunakan lem kuning sembarangan. Soleman menggunakan lem Polyurethane (PU) grade industri pabrik sepatu, dilengkapi cairan primer pengikis kotoran mikroskopis dan diproses menggunakan mesin Thermo-Press bertekanan tinggi. Kami memberikan garansi servis hingga 60 - 90 hari.'
     },
     {
-      q: 'Apakah benar ada promo Gratis Ongkir antar-jemput di Cirebon?',
-      a: 'Benar sekali! Untuk pemesanan servis minimal 2 pasang sepatu (bisa gabungan sepatu sendiri, teman, atau keluarga), layanan antar-jemput kurir Herdi se-Kota dan Kab. Cirebon 100% GRATIS tanpa biaya tambahan.'
+      q: 'Bagaimana aturan promo Gratis Ongkir antar-jemput di Cirebon?',
+      a: 'Khusus wilayah Kota Cirebon (Kesambi, Kejaksan, Pekalipan, Lemahwungkuk, Harjamukti), layanan antar-jemput 100% GRATIS ONGKIR tanpa syarat jumlah pasang! Untuk wilayah Kabupaten Cirebon, GRATIS ONGKIR berlaku untuk pemesanan minimal 2 pasang sepatu (jika 1 pasang dikenakan ongkir standar Rp 10.000).'
     },
     {
       q: 'Bagaimana saya mengetahui progres pengerjaan sepatu saya?',
-      a: 'Sistem kami terhubung dengan WhatsApp. Anda akan menerima notifikasi berkala via WA saat kurir Herdi menjemput, saat sepatu tiba di workshop Cipto, saat teknisi mulai mengerjakan, hingga saat sepatu lolos Quality Control dan siap diantar. Anda juga bisa mengecek status kapan saja di menu "Lacak Sepatu".'
+      a: 'Anda bisa mengecek status kapan saja di kolom "Lacak Status Sepatu" dengan memasukkan nomor kode seri pesanan Anda (misal: SLC-3891). Anda juga akan menerima update WhatsApp saat Kurir Soleman menjemput, saat tiba di workshop Cipto, hingga saat sepatu siap diantar kembali.'
     },
     {
       q: 'Berapa lama estimasi pengerjaan servis sepatu?',
@@ -66,7 +66,7 @@ export const TestimonialsAndFaq: React.FC = () => {
     },
     {
       q: 'Bagaimana metode pembayarannya?',
-      a: 'Pembayaran sangat fleksibel: bisa Cash COD ke kurir Herdi saat sepatu diantar kembali, transfer Bank (BCA, Mandiri, BRI), atau melalui QRIS saat menerima invoice lewat WhatsApp.'
+      a: 'Soleman menyediakan metode pembayaran yang sangat praktis: bisa COD (Bayar Tunai ke Kurir Soleman saat sepatu diantar kembali tanpa DP) atau scan QRIS instan resmi (bisa pakai BCA, Mandiri, BRI, BNI, GoPay, OVO, Dana, ShopeePay).'
     }
   ];
 
@@ -100,15 +100,20 @@ export const TestimonialsAndFaq: React.FC = () => {
                     <Star key={i} className="w-4 h-4 fill-amber-400" />
                   ))}
                 </div>
-                <p className="text-xs sm:text-sm text-slate-300 italic leading-relaxed">
+                <Quote className="w-6 h-6 text-slate-700" />
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed italic">
                   "{item.comment}"
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-800/80">
-                <strong className="text-sm font-bold text-white block">{item.name}</strong>
-                <span className="text-[11px] text-amber-400 block mt-0.5">{item.area}</span>
-                <span className="text-[10px] text-slate-500 block">{item.shoe}</span>
+              <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-white">{item.name}</h4>
+                  <p className="text-[11px] text-slate-400">{item.area}</p>
+                </div>
+                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">
+                  {item.shoe}
+                </span>
               </div>
             </div>
           ))}
@@ -120,28 +125,32 @@ export const TestimonialsAndFaq: React.FC = () => {
         <div className="text-center max-w-2xl mx-auto space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-wider">
             <HelpCircle className="w-3.5 h-3.5" />
-            <span>Pertanyaan yang Sering Diajukan</span>
+            <span>Paling Sering Ditanyakan</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
-            FAQ Seputar Servis & Antar-Jemput Sepatu
+            Pertanyaan Seputar Servis & Antar-Jemput
           </h2>
         </div>
 
-        <div className="mt-10 max-w-3xl mx-auto space-y-3">
-          {faqs.map((faq, index) => {
-            const isOpen = activeFaq === index;
+        <div className="mt-8 max-w-3xl mx-auto space-y-3">
+          {faqs.map((faq, idx) => {
+            const isOpen = activeFaq === idx;
             return (
-              <div
-                key={index}
-                className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden transition-all"
+              <div 
+                key={idx}
+                className="rounded-2xl bg-slate-900/90 border border-slate-800 overflow-hidden transition-all"
               >
                 <button
-                  onClick={() => setActiveFaq(isOpen ? null : index)}
-                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 text-xs sm:text-sm font-bold text-white hover:text-amber-400 transition-colors"
+                  type="button"
+                  onClick={() => setActiveFaq(isOpen ? null : idx)}
+                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left gap-4 hover:bg-slate-800/40 transition-colors"
                 >
-                  <span>{faq.q}</span>
-                  <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${isOpen ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
+                  <span className="text-xs sm:text-sm font-bold text-white">
+                    {faq.q}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180 text-amber-400' : ''}`} />
                 </button>
+
                 {isOpen && (
                   <div className="px-4 pb-5 sm:px-5 text-xs text-slate-300 leading-relaxed border-t border-slate-800/60 pt-3">
                     {faq.a}
@@ -152,25 +161,16 @@ export const TestimonialsAndFaq: React.FC = () => {
           })}
         </div>
 
-        {/* Bottom CTA bar */}
-        <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-amber-500/15 via-slate-900 to-emerald-500/15 border border-slate-800 text-center space-y-4">
-          <h3 className="text-lg sm:text-xl font-bold text-white">
-            Masih Ragu atau Punya Kerusakan Sepatu yang Belum Tercantum?
-          </h3>
-          <p className="text-xs text-slate-300 max-w-xl mx-auto">
-            Kirimkan foto sepatu Anda ke WhatsApp kami untuk konsultasi gratis dan diagnosa langsung oleh master teknisi Solcreft Cirebon.
-          </p>
-          <div>
-            <a
-              href={buildConsultationWhatsAppUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>Chat CS & Konsultasi Foto via WhatsApp</span>
-            </a>
-          </div>
+        <div className="mt-8 text-center">
+          <a
+            href={buildConsultationWhatsAppUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Masih Ada Pertanyaan? Chat Admin WhatsApp</span>
+          </a>
         </div>
       </div>
 

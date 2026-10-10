@@ -115,7 +115,7 @@ export const WorkshopLocationSection: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-slate-400 mt-2">
-              Kurir Herdi beroperasi setiap hari menjemput dan mengantar sepatu di kecamatan berikut se-Cirebon:
+              Kurir Soleman beroperasi setiap hari menjemput dan mengantar sepatu di kecamatan berikut se-Cirebon:
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-2 text-xs">

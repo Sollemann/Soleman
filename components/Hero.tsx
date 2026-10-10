@@ -14,7 +14,9 @@ import {
   ArrowRight, 
   Sparkles,
   CheckCircle2,
-  Clock
+  Clock,
+  Bot,
+  Smartphone
 } from 'lucide-react';
 import { WORKSHOP_INFO } from '../data/solcreftData';
 import { buildConsultationWhatsAppUrl } from '../services/whatsappHelper';
@@ -24,6 +26,8 @@ interface HeroProps {
   onSearchOrder: (id: string) => void;
   onExploreServices: () => void;
   onOpenDashboard: () => void;
+  onOpenWaBot?: () => void;
+  onOpenInstallModal?: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({
@@ -31,6 +35,8 @@ export const Hero: React.FC<HeroProps> = ({
   onSearchOrder,
   onExploreServices,
   onOpenDashboard,
+  onOpenWaBot,
+  onOpenInstallModal,
 }) => {
   const [orderQuery, setOrderQuery] = useState('');
 
@@ -74,7 +80,7 @@ export const Hero: React.FC<HeroProps> = ({
 
             {/* Subtitle */}
             <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl">
-              Spesialis reparasi segala jenis kerusakan sepatu di Cirebon: dari <strong className="text-white">sol copot / reglue press pabrik, jahit sol keliling, ganti tapak (resoling), unyellowing, deep clean</strong>, hingga reparasi tumit. Kurir <strong className="text-amber-400">Herdi</strong> jemput langsung ke depan rumah dengan titik lokasi akurat dan <strong className="text-amber-400">update progres berkala via WhatsApp!</strong>
+              Spesialis reparasi segala jenis kerusakan sepatu di Cirebon: dari <strong className="text-white">sol copot / reglue press pabrik, jahit sol keliling, ganti tapak (resoling), unyellowing, deep clean</strong>, hingga reparasi tumit. <strong className="text-amber-400">Kurir Soleman</strong> jemput langsung ke depan rumah dengan titik lokasi akurat dan <strong className="text-amber-400">pembayaran fleksibel QRIS atau COD!</strong>
             </p>
 
             {/* Key Value Badges */}
@@ -89,7 +95,7 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-medium text-slate-300 col-span-2 sm:col-span-1">
                 <MessageSquare className="w-4 h-4 text-sky-400 shrink-0" />
-                <span>Notifikasi WA Otomatis</span>
+                <span>Bayar COD & QRIS</span>
               </div>
             </div>
 
@@ -100,7 +106,7 @@ export const Hero: React.FC<HeroProps> = ({
                 className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-sm font-bold text-slate-950 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 shadow-xl shadow-amber-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Truck className="w-5 h-5 stroke-[2.3]" />
-                <span>Booking Antar-Jemput (Auto Lokasi)</span>
+                <span>Pesan Antar-Jemput Kurir Soleman</span>
               </button>
 
               <button
@@ -112,21 +118,48 @@ export const Hero: React.FC<HeroProps> = ({
               </button>
             </div>
 
+            {/* Quick Helper Badges: Gemini AI Bot + Pasang App */}
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+              {onOpenWaBot && (
+                <button
+                  type="button"
+                  onClick={onOpenWaBot}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 transition-all hover:scale-105 active:scale-95 shadow-sm"
+                >
+                  <Bot className="w-4 h-4 text-amber-400" />
+                  <span>📸 Gemini AI Vision: Unggah Foto & Cek Menu</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-black">
+                    BARU
+                  </span>
+                </button>
+              )}
+              {onOpenInstallModal && (
+                <button
+                  type="button"
+                  onClick={onOpenInstallModal}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 transition-all hover:scale-105 active:scale-95"
+                >
+                  <Smartphone className="w-4 h-4 text-sky-400" />
+                  <span>📲 Pasang Aplikasi (Android / iPhone)</span>
+                </button>
+              )}
+            </div>
+
             {/* Quick Order Tracker Bar */}
             <div className="pt-4">
               <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl max-w-lg">
                 <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-medium">
                   <span className="flex items-center gap-1.5 text-slate-300">
-                    <Search className="w-3.5 h-3.5 text-amber-400" /> Lacak Status Sepatu Anda
+                    <Search className="w-3.5 h-3.5 text-amber-400" /> Lacak Kode Seri Sepatu
                   </span>
-                  <span className="text-[11px] text-slate-500">Contoh: SLC-3891</span>
+                  <span className="text-[11px] text-slate-500 font-mono">Contoh: SLC-3891</span>
                 </div>
                 <form onSubmit={handleSearch} className="flex gap-2">
                   <input
                     type="text"
                     value={orderQuery}
                     onChange={(e) => setOrderQuery(e.target.value)}
-                    placeholder="Ketik Nomor Order (misal: SLC-3891) atau No HP..."
+                    placeholder="Masukkan Nomor Seri Sepatu (SLC-3891)..."
                     className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400"
                   />
                   <button
@@ -142,7 +175,7 @@ export const Hero: React.FC<HeroProps> = ({
 
           </div>
 
-          {/* Right Column: Interactive Highlight Card / Visual Feature */}
+          {/* Right Column: Interactive Highlight Card */}
           <div className="lg:col-span-5">
             <div className="relative">
               {/* Outer decorative card */}
@@ -153,7 +186,7 @@ export const Hero: React.FC<HeroProps> = ({
                   <div>
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Workshop Soleman Cirebon</span>
                     <h3 className="text-xl font-bold text-white mt-1">Layanan Antar-Jemput Prioritas</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Area Kota & Kabupaten Cirebon • Kurir Herdi</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Area Kota & Kabupaten Cirebon • Kurir Soleman</p>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
                     <Truck className="w-6 h-6" />
@@ -167,9 +200,9 @@ export const Hero: React.FC<HeroProps> = ({
                       1
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-200">Deteksi Lokasi GPS Otomatis</h4>
+                      <h4 className="text-sm font-bold text-slate-200">Lokasi Otomatis Lewat WhatsApp</h4>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Tinggal klik <em>"Gunakan Lokasi Saya"</em>, koordinat & link Google Maps langsung tercatat untuk panduan kurir.
+                        Tulis kecamatan di Cirebon, titik lokasi otomatis dishare langsung lewat fitur Share Loc WhatsApp ke Kurir Soleman tanpa repot ketik alamat atau koordinat.
                       </p>
                     </div>
                   </div>
@@ -179,9 +212,9 @@ export const Hero: React.FC<HeroProps> = ({
                       2
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-200">Notifikasi Otomatis via WhatsApp</h4>
+                      <h4 className="text-sm font-bold text-slate-200">Pembayaran QRIS atau COD</h4>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Dapat pesan WA resmi saat kurir meluncur, sepatu tiba di workshop Cipto, hingga selesai direparasi.
+                        Bebas pilih: Scan QRIS instan resmi semua bank & e-wallet atau bayar tunai COD saat sepatu diantar kembali.
                       </p>
                     </div>
                   </div>
@@ -193,50 +226,19 @@ export const Hero: React.FC<HeroProps> = ({
                     <div>
                       <h4 className="text-sm font-bold text-slate-200">Pengerjaan Standar Pabrik & Garansi</h4>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Teknisi bersertifikat, lem polyurethane tahan air, jahitan presisi benang wax, dan garansi sampai 90 hari.
+                        Teknisi ahli, lem polyurethane thermo-press, jahitan sol wax anti-lepas, dan garansi resmi hingga 90 hari.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Sample Live Order Widget Preview */}
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/90 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                      Status Penjemputan Terkini
-                    </span>
-                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md font-mono text-[10px]">
-                      LIVE GPS
-                    </span>
+                {/* Workshop Quick Location Footer */}
+                <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-amber-400" />
+                    <span>Jl. Dr. Cipto No. 42 Cirebon</span>
                   </div>
-
-                  <div className="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-xl text-xs">
-                    <div>
-                      <p className="font-semibold text-white">Sepatu: Nike AJ1 (Reglue + Unyellowing)</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Tuparev, Cirebon • Kurir Meluncur</p>
-                    </div>
-                    <button
-                      onClick={onOpenDashboard}
-                      className="text-[11px] font-bold text-amber-400 hover:text-amber-300 underline"
-                    >
-                      Buka Dashboard
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bottom consult link */}
-                <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Mau tanya biaya & kirim foto dulu?</span>
-                  <a
-                    href={buildConsultationWhatsAppUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                  >
-                    <span>Konsultasi WA Gratis</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </a>
+                  <span className="text-emerald-400 font-bold">Buka Tiap Hari</span>
                 </div>
 
               </div>

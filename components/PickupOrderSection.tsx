@@ -7,36 +7,47 @@ import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
   MapPin, 
-  Navigation, 
   CheckCircle2, 
   AlertCircle, 
-  ExternalLink, 
   MessageSquare, 
   Clock, 
   ShieldCheck, 
-  Plus, 
-  Trash2, 
   ChevronRight, 
   Phone, 
-  Compass, 
   FileCheck, 
   Camera, 
   Upload, 
   X, 
   Layers, 
-  Info,
-  Sparkles
+  Sparkles, 
+  DollarSign, 
+  QrCode, 
+  Share2,
+  Navigation
 } from 'lucide-react';
 import { 
   SERVICES_CATALOG, 
   CIREBON_AREAS, 
+  ALL_CIREBON_KECAMATAN_SUGGESTIONS,
+  DISTANCE_ZONES,
   WORKSHOP_INFO, 
   SHOE_MATERIALS, 
   DAMAGE_SEVERITIES, 
   calculateServicePrice 
 } from '../data/solcreftData';
-import { ServiceItem, ShoeType, ShoeMaterial, DamageSeverity, Order, ShoeItemDetail } from '../types';
-import { buildNewOrderWhatsAppUrl, buildGoogleMapsRouteUrl } from '../services/whatsappHelper';
+import { 
+  ServiceItem, 
+  ShoeType, 
+  ShoeMaterial, 
+  DamageSeverity, 
+  Order, 
+  ShoeItemDetail, 
+  PaymentMethod,
+  DistanceZone,
+  LogisticsPartner,
+  CustomerUser
+} from '../types';
+import { buildNewOrderWhatsAppUrl } from '../services/whatsappHelper';
 
 interface PairFormItem {
   id: string;
@@ -55,25 +66,50 @@ interface PickupOrderSectionProps {
   initialShoeType?: ShoeType;
   initialPairsCount?: number;
   initialArea?: string;
+  customerUser?: CustomerUser | null;
   onOrderCreated: (order: Order) => void;
   onOpenDashboard: () => void;
 }
+
+const AVAILABLE_SHOE_TYPES: { id: ShoeType; label: string; desc: string }[] = [
+  { id: 'Sneakers', label: 'Sneakers', desc: 'Jordan, Vans, Ventela, Compass' },
+  { id: 'Sepatu Sekolah', label: 'Sepatu Sekolah', desc: 'Warrior, NB, Sepatu hitam anak' },
+  { id: 'Sepatu Kantor / Pantofel', label: 'Sepatu Kantor / Pantofel', desc: 'Kulit kerja, formal pria/wanita' },
+  { id: 'Sepatu Proyek / Safety', label: 'Sepatu Proyek / Safety', desc: 'Safety boots, tapak paku, baja' },
+  { id: 'Sepatu Futsal', label: 'Sepatu Futsal', desc: 'Sol karet mentah indoor/outdoor' },
+  { id: 'Sepatu Olah Raga / Sport', label: 'Sepatu Olah Raga / Sport', desc: 'Running joging, senam, badminton' },
+  { id: 'Sepatu Trail', label: 'Sepatu Trail', desc: 'Trail run, motocross, cadas (Ganti Tapak Rp 200rb)' },
+  { id: 'Sepatu Gunung / Hiking', label: 'Sepatu Gunung / Hiking', desc: 'Hiking boots, trekking Ciremai lugged grip' },
+  { id: 'Sepatu Bola / Cleats', label: 'Sepatu Bola / Cleats', desc: 'Pul stud rumput sintetis/alami' },
+  { id: 'Sendal Biasa', label: 'Sendal Biasa', desc: 'Sandal jepit, casual, slip-on' },
+  { id: 'Sendal Kulit', label: 'Sendal Kulit', desc: 'Sandal selop kulit pria/wanita' },
+];
 
 export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
   initialServices,
   initialShoeType,
   initialPairsCount,
   initialArea,
+  customerUser,
   onOrderCreated,
   onOpenDashboard
 }) => {
   // Customer Info State
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerName, setCustomerName] = useState(customerUser?.name || '');
+  const [customerPhone, setCustomerPhone] = useState(customerUser?.phone || '');
   const [pairsCount, setPairsCount] = useState<number>(initialPairsCount || 1);
   const [activePairIndex, setActivePairIndex] = useState<number>(0);
 
-  // Shoes Data State (Supports 1, 2, 3, 4, 5+ pairs)
+  // Prefill customer if logged in
+  useEffect(() => {
+    if (customerUser) {
+      if (!customerName) setCustomerName(customerUser.name);
+      if (!customerPhone) setCustomerPhone(customerUser.phone);
+      if (customerUser.savedArea && !initialArea) setAreaName(customerUser.savedArea);
+    }
+  }, [customerUser]);
+
+  // Shoes Data State
   const [shoesList, setShoesList] = useState<PairFormItem[]>([
     {
       id: 'pair-1',
@@ -82,25 +118,30 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
       shoeType: initialShoeType || 'Sneakers',
       material: 'Canvas / Kain',
       severity: 'normal',
-      serviceIds: initialServices && initialServices.length > 0 ? initialServices.map(s => s.id) : ['reglue-total'],
+      serviceIds: initialServices && initialServices.length > 0 ? initialServices.map(s => s.id) : ['jahit-benang-tersembunyi'],
       customNotes: '',
       photoPreview: undefined
     }
   ]);
 
-  // Delivery & Location State
+  // Delivery & Distance Zone State (Jarak: Dekat, Jauh Grab/Maxim, Luar Cirebon J&T Express)
   const [pickupType, setPickupType] = useState<'antar_jemput' | 'hanya_jemput' | 'drop_off'>('antar_jemput');
+  const [distanceZone, setDistanceZone] = useState<DistanceZone>('dekat_kota');
+  const [logisticsPartner, setLogisticsPartner] = useState<LogisticsPartner>('kurir_soleman');
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [confirmMaterialPhoto, setConfirmMaterialPhoto] = useState(true);
   const [preferredTimeSlot, setPreferredTimeSlot] = useState<'pagi' | 'siang' | 'sore'>('siang');
-  const [areaName, setAreaName] = useState<string>(initialArea || CIREBON_AREAS[0].name);
-  const [fullAddress, setFullAddress] = useState('');
+  const [areaType, setAreaType] = useState<'Kota' | 'Kabupaten'>('Kota');
+  const [areaName, setAreaName] = useState<string>(initialArea || 'Kesambi');
   const [landmark, setLandmark] = useState('');
-  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
-  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'success' | 'error'>('idle');
-  const [gpsErrorMessage, setGpsErrorMessage] = useState('');
+
+  // Metode Pembayaran: QRIS dan COD
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
 
   // UI state
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [validationError, setValidationError] = useState('');
+  const [showQrisModal, setShowQrisModal] = useState(false);
 
   // Synchronize shoesList when pairsCount changes
   useEffect(() => {
@@ -115,7 +156,7 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
             shoeType: 'Sneakers',
             material: 'Canvas / Kain',
             severity: 'normal',
-            serviceIds: ['reglue-total'],
+            serviceIds: ['jahit-benang-tersembunyi'],
             customNotes: '',
             photoPreview: undefined
           });
@@ -130,35 +171,6 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
       setActivePairIndex(pairsCount - 1);
     }
   }, [pairsCount]);
-
-  // Handle GPS detection
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus('error');
-      setGpsErrorMessage('Browser tidak mendukung pendeteksian lokasi GPS.');
-      return;
-    }
-
-    setGpsStatus('locating');
-    setGpsErrorMessage('');
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        setGpsCoords({
-          lat: latitude,
-          lng: longitude,
-          accuracy: Math.round(accuracy)
-        });
-        setGpsStatus('success');
-      },
-      (error) => {
-        setGpsStatus('error');
-        setGpsErrorMessage('Izin lokasi tidak aktif atau koneksi satelit lemah.');
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
-  };
 
   // Active shoe item helper functions
   const activeShoe = shoesList[activePairIndex] || shoesList[0];
@@ -231,16 +243,35 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
   });
 
   const totalServicesPrice = shoeDetailsWithPrices.reduce((sum, s) => sum + s.price, 0);
-  const activeAreaObj = CIREBON_AREAS.find(a => a.name === areaName) || CIREBON_AREAS[0];
-  const deliveryFee = (pickupType === 'drop_off' || pairsCount >= 2) ? 0 : activeAreaObj.deliveryFee;
+
+  // ATURAN ONGKIR BERDASARKAN JARAK:
+  // Zona 1 (Dekat Kota Cirebon <6KM): GRATIS ONGKIR
+  // Zona 2 (Jauh Kabupaten Cirebon >6KM): Gratis min. 2 pasang / Rp 10.000 jika 1 pasang (Bisa Instant Grab/Maxim)
+  // Zona 3 (Luar Cirebon): Estimasi Ekspedisi J&T Express Rp 15.000
+  let deliveryFee = 0;
+  if (pickupType === 'drop_off') {
+    deliveryFee = 0;
+  } else if (distanceZone === 'luar_cirebon') {
+    deliveryFee = 15000;
+  } else if (distanceZone === 'jauh_kabupaten') {
+    deliveryFee = pairsCount >= 2 ? 0 : 10000;
+  } else {
+    deliveryFee = 0;
+  }
+
   const grandTotal = totalServicesPrice + deliveryFee;
 
-  // Handle Order Submit
+  // Cek apakah ada layanan yang butuh konfirmasi sampel foto bahan sol (seperti Ganti Tapak Trail Rp 200rb)
+  const hasServiceRequiringPhotoConfirm = shoeDetailsWithPrices.some(s => 
+    s.selectedServices.some(serv => serv.requiresPhotoConfirmation)
+  );
+
+  // Handle Order Submit (Otomatis Lokasi via WA)
   const handleCreateOrder = (sendToWhatsApp: boolean = false) => {
     setValidationError('');
 
     if (!customerName.trim()) {
-      setValidationError('Silakan masukkan nama lengkap Anda.');
+      setValidationError('Silakan masukkan nama Anda.');
       return;
     }
     if (!customerPhone.trim() || customerPhone.length < 9) {
@@ -248,24 +279,13 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
       return;
     }
 
-    // Check if any shoe brand is empty
     const emptyBrandIndex = shoesList.findIndex(s => !s.shoeBrand.trim());
     if (emptyBrandIndex !== -1) {
-      setValidationError(`Silakan isi Merk & Tipe untuk Sepatu #${emptyBrandIndex + 1}.`);
+      setValidationError(`Silakan isi Merk/Jenis untuk Sepatu #${emptyBrandIndex + 1}.`);
       setActivePairIndex(emptyBrandIndex);
       return;
     }
 
-    if (pickupType !== 'drop_off' && !fullAddress.trim()) {
-      setValidationError('Silakan masukkan alamat penjemputan di Cirebon.');
-      return;
-    }
-
-    const mapsUrl = gpsCoords 
-      ? `https://maps.google.com/?q=${gpsCoords.lat},${gpsCoords.lng}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress + ', ' + areaName + ', Cirebon')}`;
-
-    // Collect all photos
     const allPhotos = shoeDetailsWithPrices
       .map(s => s.photoUrl)
       .filter((url): url is string => Boolean(url));
@@ -280,6 +300,7 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
 
     const newOrder: Order = {
       id: `SLC-${Math.floor(1000 + Math.random() * 9000)}`,
+      customerId: customerUser?.id,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       shoeBrand: summaryBrand,
@@ -294,30 +315,39 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
       photos: allPhotos,
       pickupType,
       preferredTimeSlot,
+      distanceZone,
+      logisticsPartner,
+      trackingNumber: trackingNumber.trim() || undefined,
+      customerConfirmedMaterialPhoto: confirmMaterialPhoto,
       location: {
-        areaName,
-        fullAddress: pickupType === 'drop_off' ? WORKSHOP_INFO.address : fullAddress.trim(),
+        areaName: areaName.trim() || (distanceZone === 'luar_cirebon' ? 'Luar Cirebon' : areaType === 'Kota' ? 'Kota Cirebon' : 'Kabupaten Cirebon'),
+        areaType: distanceZone === 'luar_cirebon' ? 'Luar_Cirebon' : areaType,
+        distanceZone,
+        logisticsPartner,
+        trackingNumber: trackingNumber.trim() || undefined,
+        shareLocViaWhatsApp: true,
+        fullAddress: landmark.trim() ? `Patokan: ${landmark.trim()} (Share Loc WA)` : 'Share Loc via WhatsApp Kurir Soleman',
         landmark: landmark.trim(),
-        lat: gpsCoords?.lat,
-        lng: gpsCoords?.lng,
-        accuracy: gpsCoords?.accuracy,
-        mapsUrl,
-        detectedViaGps: gpsStatus === 'success',
+        mapsUrl: `https://maps.google.com/?q=-6.7248,108.5521`,
       },
+      paymentMethod,
+      paymentStatus: paymentMethod === 'cod' ? 'cod_pending' : 'menunggu_pembayaran',
       totalServicesPrice,
       deliveryFee,
       totalAmount: grandTotal,
       status: 'menunggu_jemput',
       isAcceptedByAdmin: false,
       createdAt: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
-      estimatedFinishedAt: '2 - 3 Hari Kerja',
+      estimatedFinishedAt: '1 - 3 Hari Kerja',
       technicianName: 'Master Teknisi Soleman',
+      assignedCourier: logisticsPartner === 'jnt_express' ? 'Ekspedisi J&T Express' : 'Kurir Soleman',
+      assignedCourierPhone: '08814519955',
       timeline: [
         {
           status: 'menunggu_jemput',
           label: 'Order Booking Dibuat',
           timestamp: 'Baru saja',
-          description: `Booking ${pairsCount} pasang sepatu & foto kerusakan diterima di dashboard admin. Menunggu konfirmasi admin & kurir Herdi.`
+          description: `Booking ${pairsCount} pasang sepatu (${logisticsPartner.toUpperCase()}). Kurir siap proses via WA.`
         }
       ]
     };
@@ -325,6 +355,7 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
     setCreatedOrder(newOrder);
     onOrderCreated(newOrder);
 
+    // Buka WhatsApp langsung
     if (sendToWhatsApp) {
       const waUrl = buildNewOrderWhatsAppUrl(newOrder);
       window.open(waUrl, '_blank');
@@ -336,51 +367,107 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
       
       {/* Title */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-bold uppercase tracking-wider">
           <Truck className="w-3.5 h-3.5" />
-          <span>Antar-Jemput Sepatu Se-Cirebon • Kurir Herdi</span>
+          <span>Antar-Jemput Sepatu & Sandal Se-Cirebon • Kurir Soleman</span>
         </div>
         <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-display">
-          Booking Servis Sepatu & Antar-Jemput <br />
-          <span className="text-amber-400">Pilihan Bahan, Tingkat Kerusakan & Kirim Foto ke Admin</span>
+          Formulir Pemesanan Reparasi <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500">
+            Jahit Sol, Ganti Tapak & Share Loc Otomatis via WA
+          </span>
         </h2>
         <p className="text-slate-300 text-xs sm:text-sm max-w-2xl mx-auto">
-          Bisa pilih reparasi untuk 1 pasang, 2 pasang, hingga banyak sepatu sekaligus. Setiap pasang dapat disesuaikan jenis bahan, keparahan (Kecil/Normal/Hard), dan upload foto fisiknya langsung ke dashboard admin Soleman!
+          Tanpa repot mengetik alamat atau titik koordinat rumit! Titik lokasi otomatis dikirim lewat <strong className="text-amber-400">Share Loc di WhatsApp</strong> ke <strong className="text-amber-400">Kurir Soleman</strong> dengan pilihan bayar <strong className="text-amber-400">QRIS</strong> atau <strong className="text-amber-400">COD</strong>.
         </p>
       </div>
 
-      {/* Success Banner if order created */}
+      {/* Promosi Ongkir Banner */}
+      <div className="mt-8 max-w-4xl mx-auto p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-slate-900 to-sky-500/15 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0">
+            <Truck className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="font-extrabold text-white block">
+              Ketentuan Promo Ongkir Antar-Jemput Soleman Cirebon:
+            </span>
+            <span className="text-slate-300">
+              • <strong className="text-emerald-400">Khusus Kota Cirebon: GRATIS ONGKIR</strong> (Berapapun pasang).
+              <br className="hidden sm:inline" />
+              • <strong className="text-amber-300">Kabupaten Cirebon: GRATIS ONGKIR</strong> minimal 2 pasang (1 pasang hanya Rp 10.000).
+            </span>
+          </div>
+        </div>
+        <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold self-start sm:self-center shrink-0">
+          Praktis & Hemat
+        </span>
+      </div>
+
+      {/* Success Notification after Order Created */}
       {createdOrder && (
-        <div className="mt-8 p-6 rounded-3xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 shadow-2xl space-y-4">
+        <div className="mt-8 max-w-4xl mx-auto p-6 rounded-3xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 shadow-2xl space-y-4">
           <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-lg shadow-emerald-500/25">
-              <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-lg shadow-emerald-500/25">
+              <CheckCircle2 className="w-7 h-7 stroke-[2.5]" />
             </div>
             <div className="space-y-1">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Order & Foto Berhasil Dikirim ke Dashboard Admin</span>
-              <h3 className="text-xl font-extrabold text-white">Order #{createdOrder.id} Siap Dijemput Kurir Herdi!</h3>
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                Pesanan Berhasil Dicatat!
+              </span>
+              <h3 className="text-xl font-extrabold text-white">
+                Order #{createdOrder.id} - Siap Dijemput Kurir Soleman
+              </h3>
               <p className="text-xs text-emerald-300 leading-relaxed">
-                Rincian {createdOrder.pairsCount} pasang sepatu dan foto kerusakan telah masuk langsung ke Dashboard Admin Soleman. Admin & kurir Herdi akan segera memverifikasi dan menjadwalkan penjemputan ke alamat Anda.
+                Rincian {createdOrder.pairsCount} pasang sepatu dan metode pembayaran <strong className="text-white uppercase">{createdOrder.paymentMethod}</strong> (Total Rp {createdOrder.totalAmount.toLocaleString('id-ID')}) telah masuk ke sistem. Tinggal kirim Share Loc ke WhatsApp Kurir Soleman!
               </p>
             </div>
           </div>
+
+          {/* If QRIS selected, show QRIS quick card */}
+          {createdOrder.paymentMethod === 'qris' && (
+            <div className="p-4 rounded-2xl bg-slate-950 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center">
+                  <QrCode className="w-9 h-9 text-slate-950" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                    Pembayaran QRIS Soleman Cirebon
+                  </span>
+                  <span className="text-sm font-bold text-white">
+                    Scan via BCA, Mandiri, BRI, BNI, GoPay, OVO, Dana
+                  </span>
+                  <p className="text-[11px] text-slate-400">Total Tagihan: Rp {createdOrder.totalAmount.toLocaleString('id-ID')}</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowQrisModal(true)}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all shrink-0"
+              >
+                Tampilkan Barcode QRIS
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3 pt-2">
             <button
               onClick={onOpenDashboard}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 transition-all"
             >
-              <span>Pantau Status di Dashboard</span>
+              <span>Lacak Progres di Sistem</span>
               <ChevronRight className="w-4 h-4" />
             </button>
             <a
               href={buildNewOrderWhatsAppUrl(createdOrder)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md"
             >
-              <MessageSquare className="w-4 h-4 text-emerald-400" />
-              <span>Chat Admin WA (0881-4519-955) [Opsional]</span>
+              <MessageSquare className="w-4 h-4" />
+              <span>Kirim & Share Loc via WhatsApp (0881-4519-955)</span>
             </a>
           </div>
         </div>
@@ -389,7 +476,7 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
       {/* Main Booking Form Grid */}
       <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left Form: Data Pelanggan + Pengaturan Sepatu Per Pasang (7 cols) */}
+        {/* Left Form: Data Pelanggan + Sepatu + Lokasi Otomatis + Pembayaran (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           
           {/* Card 1: Data Kontak & Jumlah Pasang */}
@@ -397,19 +484,23 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center">1</span>
-                <h3 className="text-sm font-bold text-white">Data Kontak & Jumlah Pasang Sepatu</h3>
+                <h3 className="text-sm font-bold text-white">Data Kontak & Jumlah Pasang Sepatu/Sandal</h3>
               </div>
-              {pairsCount >= 2 && (
+              {areaType === 'Kota' ? (
                 <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  🎉 Promo Gratis Ongkir Cirebon Aktif
+                  🎉 Gratis Ongkir Kota Cirebon
                 </span>
-              )}
+              ) : pairsCount >= 2 ? (
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  🎉 Gratis Ongkir Kab. Cirebon (2+ Psg)
+                </span>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                  Nama Pelanggan *
+                  Nama Anda *
                 </label>
                 <input
                   type="text"
@@ -434,11 +525,16 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
               </div>
             </div>
 
-            {/* Pilihan Jumlah Pasang Sepatu: 1, 2, 3, 4, 5+ */}
+            {/* Pilihan Jumlah Pasang */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
-                Pilih Berapa Pasang Sepatu yang Mau Diservis?
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Jumlah Pasang yang Mau Diservis:
+                </label>
+                <span className="text-[11px] text-amber-400 font-semibold">
+                  {pairsCount} Pasang Dipilih
+                </span>
+              </div>
               <div className="grid grid-cols-5 gap-2">
                 {[1, 2, 3, 4, 5].map((num) => (
                   <button
@@ -447,102 +543,84 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
                     onClick={() => setPairsCount(num)}
                     className={`py-2.5 rounded-xl text-xs font-extrabold border transition-all ${
                       pairsCount === num
-                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md scale-105'
+                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    {num} {num >= 5 ? 'Pasang+' : 'Pasang'}
+                    {num} Pasang
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">
-                * Minimal 2 pasang sepatu otomatis mendapatkan <strong className="text-amber-400">Gratis Antar-Jemput</strong> se-Cirebon!
-              </p>
             </div>
           </div>
 
-          {/* Card 2: Pengaturan Rinci Sepatu Per Pasang (Tabs Sepatu #1, Sepatu #2, dst.) */}
+          {/* Card 2: Pengaturan Sepatu/Sandal Aktif */}
           <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 space-y-5 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <span className="w-7 h-7 rounded-xl bg-sky-500/20 text-sky-400 font-bold text-xs flex items-center justify-center">2</span>
+                <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center">2</span>
                 <h3 className="text-sm font-bold text-white">
-                  Rincian Kerusakan: Sepatu #{activePairIndex + 1}
+                  Rincian Item #{activePairIndex + 1}
                 </h3>
               </div>
-              <span className="text-xs font-mono font-bold text-amber-400">
-                Subtotal: Rp {shoeDetailsWithPrices[activePairIndex]?.price.toLocaleString('id-ID')}
-              </span>
+
+              {pairsCount > 1 && (
+                <div className="flex items-center gap-1.5">
+                  {shoesList.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActivePairIndex(idx)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        activePairIndex === idx
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                      }`}
+                    >
+                      #{idx + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Tabs Pilihan Sepatu (Jika 2 pasang atau lebih) */}
-            {pairsCount > 1 && (
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Pilih Sepatu yang Sedang Dikonfigurasi:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {shoesList.map((shoe, idx) => {
-                    const isConfigured = Boolean(shoe.shoeBrand.trim());
-                    return (
-                      <button
-                        key={shoe.id}
-                        type="button"
-                        onClick={() => setActivePairIndex(idx)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                          activePairIndex === idx
-                            ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md'
-                            : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        <span>Sepatu #{idx + 1}</span>
-                        {isConfigured && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Merk & Model */}
+            {/* Merk & Tipe Lengkap (Termasuk Sepatu Sekolah, Kantor, Proyek, Futsal, Trail, Sendal, dll) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                  Merk & Model Sepatu #{activePairIndex + 1} *
+                  Merk / Model #{activePairIndex + 1} *
                 </label>
                 <input
                   type="text"
                   value={activeShoe.shoeBrand}
                   onChange={(e) => updateActiveShoe({ shoeBrand: e.target.value })}
-                  placeholder="Contoh: Nike Air Jordan 1 / Vans Old Skool"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400"
+                  placeholder="Contoh: Warrior Sekolah / Specs Futsal / Pantofel"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                  Jenis Sepatu
+                  Jenis Sepatu / Sendal:
                 </label>
                 <select
                   value={activeShoe.shoeType}
                   onChange={(e) => updateActiveShoe({ shoeType: e.target.value as ShoeType })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
                 >
-                  <option value="Sneakers">Sneakers (Nike, Adidas, Converse, dsb)</option>
-                  <option value="Pantofel / Formal">Pantofel / Formal Kulit Kantor</option>
-                  <option value="Boots / Safety">Boots / Safety Shoes / Docmart</option>
-                  <option value="Running / Sport">Running / Sport / Futsal</option>
-                  <option value="Heels / Flat Shoes">Heels / Flat Shoes</option>
-                  <option value="Canvas / Casual">Canvas / Casual</option>
+                  {AVAILABLE_SHOE_TYPES.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.label} ({t.desc})
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
-            {/* BAHAN MATERIAL SEPATU */}
+            {/* BAHAN SEPATU/SENDAL */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>Bahan Material Sepatu #{activePairIndex + 1}:</span>
-                <span className="text-[11px] font-normal text-amber-400">Treatment Khusus per Bahan</span>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Bahan Material #{activePairIndex + 1}:
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {SHOE_MATERIALS.map(mat => (
@@ -563,11 +641,11 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
               </div>
             </div>
 
-            {/* TINGKAT KEPARAHAN KERUSAKAN: KECIL, NORMAL, HARD */}
+            {/* TINGKAT KEPARAHAN */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>Tingkat Keparahan Kerusakan Sepatu #{activePairIndex + 1}:</span>
-                <span className="text-[11px] font-normal text-slate-400">Harga Menyesuaikan Tingkat Kesulitan</span>
+                <span>Tingkat Kerusakan #{activePairIndex + 1}:</span>
+                <span className="text-[11px] font-normal text-slate-400">Harga Menyesuaikan</span>
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {DAMAGE_SEVERITIES.map(sev => (
@@ -593,12 +671,16 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
               </div>
             </div>
 
-            {/* PILIHAN LAYANAN KERUSAKAN UNTUK SEPATU INI */}
+            {/* PILIHAN LAYANAN REPARASI (Termasuk Jahit Benang Tak Kelihatan, Silang, Zigzag & Ganti Tapak) */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Pilih Layanan Reparasi Sepatu #{activePairIndex + 1}:
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Pilih Layanan Reparasi #{activePairIndex + 1}:
+                </label>
+                <span className="text-[11px] text-amber-400 font-semibold">Bisa pilih lebih dari 1 layanan</span>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
                 {SERVICES_CATALOG.map(serv => {
                   const isChecked = activeShoe.serviceIds.includes(serv.id);
                   const adjustedPrice = calculateServicePrice(serv.price, activeShoe.material, activeShoe.severity);
@@ -614,7 +696,15 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
                       }`}
                     >
                       <div className="truncate pr-2">
-                        <span>{serv.name}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="block truncate font-bold">{serv.name}</span>
+                          {serv.isBestMenu && (
+                            <span className="text-[9px] bg-amber-500 text-slate-950 px-1 rounded font-black shrink-0">
+                              Terbaik
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-500 block truncate">{serv.damageTitle}</span>
                       </div>
                       <span className="text-amber-400 font-bold shrink-0 font-mono">
                         Rp {adjustedPrice.toLocaleString('id-ID')}
@@ -625,18 +715,49 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
               </div>
             </div>
 
-            {/* UPLOAD FOTO SEPATU RUSAK */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                    <Camera className="w-4 h-4 text-sky-400" />
-                    Kirim Gambar Sepatu #{activePairIndex + 1} ke Admin
-                  </span>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Upload foto kondisi sepatu yang rusak agar mempermudah teknisi mengecek sebelum dijemput.
-                  </p>
+            {/* KONFIRMASI FOTO BAHAN KE WA (Khusus Tapak Trail Rp 200rb & Gunung) */}
+            {hasServiceRequiringPhotoConfirm && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-slate-950 to-emerald-950/40 border border-emerald-500/40 space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Camera className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5 flex-wrap">
+                      <span>Konfirmasi Sampel Foto Bahan Sol ke WhatsApp Anda</span>
+                      <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                        Wajib Sebelum Dikerjakan
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                      Khusus layanan Tapak Trail (Rp 200.000) & Gunung, teknisi Soleman <strong>WAJIB memotret sampel bahan tapak & compound karet</strong> lalu mengirimkannya ke WhatsApp Anda terlebih dahulu untuk memastikan kecocokan model, ukuran & ketebalan sebelum mulai dipasang!
+                    </p>
+                  </div>
                 </div>
+                <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmMaterialPhoto}
+                    onChange={(e) => setConfirmMaterialPhoto(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-500 focus:ring-0 bg-slate-900 border-slate-700"
+                  />
+                  <span className="text-xs font-bold text-emerald-300">
+                    ✓ Saya setuju dikirimi foto sampel bahan sol ke WhatsApp sebelum pengerjaan
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* UPLOAD FOTO SEPATU */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+              <div>
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-sky-400" />
+                  Kirim Gambar Sepatu #{activePairIndex + 1} ke Admin
+                </span>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Upload foto fisik sepatu agar teknisi dan Kurir Soleman bisa memeriksa kondisinya.
+                </p>
               </div>
 
               {activeShoe.photoPreview ? (
@@ -655,7 +776,7 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
                     <X className="w-3.5 h-3.5" />
                   </button>
                   <div className="p-1.5 bg-slate-950/80 text-[10px] text-emerald-400 font-bold text-center">
-                    ✓ Foto siap dicek admin & teknisi
+                    ✓ Foto siap diperiksa Admin Soleman
                   </div>
                 </div>
               ) : (
@@ -675,35 +796,40 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
               )}
             </div>
 
-            {/* Catatan Tambahan Khusus Sepatu Ini */}
+            {/* Catatan Tambahan */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                Catatan Khusus untuk Sepatu #{activePairIndex + 1} (Opsional)
+                Catatan Khusus #{activePairIndex + 1} (Opsional)
               </label>
               <input
                 type="text"
                 value={activeShoe.customNotes}
                 onChange={(e) => updateActiveShoe({ customNotes: e.target.value })}
-                placeholder="Contoh: Sol mangap depan kiri & ada noda kecap di samping kanvas"
+                placeholder="Contoh: Jahit sol rapi gak kelihatan benang & ganti tapak"
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400"
               />
             </div>
 
           </div>
 
-          {/* Card 3: Lokasi & Antar-Jemput */}
+          {/* Card 3: LOKASI OTOMATIS LEWAT WHATSAPP (TANPA KETIK ALAMAT / KOORDINAT GPS) */}
           <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 space-y-5 shadow-xl">
-            <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">
-              <span className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center">3</span>
-              <h3 className="text-sm font-bold text-white">Titik Lokasi Antar-Jemput di Cirebon</h3>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center">3</span>
+                <h3 className="text-sm font-bold text-white">Antar-Jemput & Lokasi Otomatis via WhatsApp</h3>
+              </div>
+              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">
+                Share Loc Otomatis
+              </span>
             </div>
 
             {/* Metode Layanan */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'antar_jemput', title: 'Antar-Jemput', desc: 'Kurir jemput & antar balik' },
-                { id: 'hanya_jemput', title: 'Jemput Saja', desc: 'Ambil di workshop Cipto' },
-                { id: 'drop_off', title: 'Drop-Off Mandiri', desc: 'Antar sendiri ke workshop' },
+                { id: 'antar_jemput', title: 'Antar-Jemput', desc: 'Kurir jemput & antar' },
+                { id: 'hanya_jemput', title: 'Jemput Saja', desc: 'Ambil di workshop' },
+                { id: 'drop_off', title: 'Drop-Off Mandiri', desc: 'Antar ke workshop Cipto' },
               ].map(m => (
                 <button
                   key={m.id}
@@ -722,85 +848,222 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
             </div>
 
             {pickupType !== 'drop_off' && (
-              <>
-                {/* Auto GPS Detection Button */}
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-4">
+                
+                {/* 1. TULIS WILAYAH KECAMATAN DI CIREBON */}
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Kecamatan di Cirebon (Bisa Ditulis Bebas) *
+                    </label>
+                    <span className="text-[10px] text-amber-400 font-semibold">Tersedia untuk seluruh Cirebon</span>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      list="cirebon-kecamatan-options"
+                      value={areaName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAreaName(val);
+                        const lower = val.toLowerCase();
+                        const isKota = ['kesambi', 'kejaksan', 'pekalipan', 'lemahwungkuk', 'harjamukti'].some(k => lower.includes(k));
+                        if (isKota) {
+                          setAreaType('Kota');
+                        } else if (val.trim().length >= 4) {
+                          setAreaType('Kabupaten');
+                        }
+                      }}
+                      placeholder="Tulis nama kecamatan Anda, misal: Kesambi, Kedawung, Sumber, Weru..."
+                      className="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
+                    />
+                    <datalist id="cirebon-kecamatan-options">
+                      {ALL_CIREBON_KECAMATAN_SUGGESTIONS.map(kec => (
+                        <option key={kec} value={kec} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  {/* Pilihan Cepat Kecamatan Cirebon */}
                   <div>
-                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                      <Compass className="w-3.5 h-3.5 text-amber-400" />
-                      Kunci Titik GPS Rumah Anda
-                    </span>
-                    <p className="text-[11px] text-slate-400">
-                      Otomatis membuat tautan navigasi kurir ke WhatsApp.
-                    </p>
+                    <span className="text-[10px] text-slate-400 block mb-1.5 font-medium">Klik Rekomendasi Kecamatan:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { name: 'Kesambi', type: 'Kota' as const },
+                        { name: 'Kejaksan', type: 'Kota' as const },
+                        { name: 'Harjamukti', type: 'Kota' as const },
+                        { name: 'Pekalipan', type: 'Kota' as const },
+                        { name: 'Lemahwungkuk', type: 'Kota' as const },
+                        { name: 'Kedawung', type: 'Kabupaten' as const },
+                        { name: 'Weru / Plered', type: 'Kabupaten' as const },
+                        { name: 'Sumber', type: 'Kabupaten' as const },
+                        { name: 'Gunung Jati', type: 'Kabupaten' as const },
+                        { name: 'Tengah Tani', type: 'Kabupaten' as const },
+                        { name: 'Talun', type: 'Kabupaten' as const },
+                        { name: 'Mundu', type: 'Kabupaten' as const },
+                        { name: 'Plumbon', type: 'Kabupaten' as const },
+                      ].map(item => (
+                        <button
+                          key={item.name}
+                          type="button"
+                          onClick={() => {
+                            setAreaName(item.name);
+                            setAreaType(item.type);
+                          }}
+                          className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all ${
+                            areaName.toLowerCase().includes(item.name.toLowerCase().split(' ')[0])
+                              ? 'bg-amber-500/25 border-amber-400 text-amber-300 font-bold shadow-sm'
+                              : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                          }`}
+                        >
+                          {item.name} <span className="opacity-70 text-[9px]">({item.type})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* PILIHAN ZONA JARAK & LOGISTIK PENGANTARAN */}
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Pilih Zona Jarak & Logistik Pengantaran:
+                    </label>
+                    <span className="text-[10px] text-amber-400 font-semibold">Tersedia Grab, Maxim & J&T</span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleDetectLocation}
-                    disabled={gpsStatus === 'locating'}
-                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 shadow transition-all shrink-0"
-                  >
-                    {gpsStatus === 'locating' ? 'Mencari...' : '📍 Gunakan Lokasi GPS Saya'}
-                  </button>
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {/* Zona 1: Dekat Kota */}
+                    <div
+                      onClick={() => {
+                        setDistanceZone('dekat_kota');
+                        setLogisticsPartner('kurir_soleman');
+                        setAreaType('Kota');
+                      }}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        distanceZone === 'dekat_kota'
+                          ? 'bg-emerald-500/15 border-emerald-500 ring-1 ring-emerald-400/40 text-white'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-extrabold text-white">Zona 1: Dekat Kota</span>
+                        <span className="text-[9px] bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded font-black">
+                          GRATIS ONGKIR
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-400 font-semibold">Kurir Internal Soleman</p>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-tight">Radius &lt; 6 KM (Kesambi, Kejaksan, Pekalipan, Harjamukti, dll)</p>
+                    </div>
 
-                {gpsStatus === 'success' && gpsCoords && (
-                  <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 font-mono text-[11px]">
-                    ✓ GPS Terkunci: {gpsCoords.lat.toFixed(5)}, {gpsCoords.lng.toFixed(5)} (Akurasi ±{gpsCoords.accuracy}m)
+                    {/* Zona 2: Jauh Kabupaten */}
+                    <div
+                      onClick={() => {
+                        setDistanceZone('jauh_kabupaten');
+                        setLogisticsPartner('grab_maxim');
+                        setAreaType('Kabupaten');
+                      }}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        distanceZone === 'jauh_kabupaten'
+                          ? 'bg-amber-500/15 border-amber-500 ring-1 ring-amber-400/40 text-white'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-extrabold text-white">Zona 2: Jauh Kab.</span>
+                        <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-bold">
+                          Gratis 2+ Psg
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-amber-400 font-semibold">Grab, Maxim & Kurir</p>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-tight">Kedawung, Sumber, Plered, Gunung Jati, Mundu, Plumbon, dll.</p>
+                    </div>
+
+                    {/* Zona 3: Luar Cirebon */}
+                    <div
+                      onClick={() => {
+                        setDistanceZone('luar_cirebon');
+                        setLogisticsPartner('jnt_express');
+                      }}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        distanceZone === 'luar_cirebon'
+                          ? 'bg-sky-500/15 border-sky-500 ring-1 ring-sky-400/40 text-white'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-extrabold text-white">Zona 3: Luar Cirebon</span>
+                        <span className="text-[9px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.2 rounded font-bold">
+                          J&T Express
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-sky-400 font-semibold">J&T, SiCepat, JNE</p>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-tight">Kuningan, Majalengka, Indramayu, Jabodetabek & Antar-Kota.</p>
+                    </div>
                   </div>
-                )}
 
-                {/* Kecamatan di Cirebon */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                    Wilayah Kecamatan di Cirebon *
-                  </label>
-                  <select
-                    value={areaName}
-                    onChange={(e) => setAreaName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                  >
-                    {CIREBON_AREAS.map(a => (
-                      <option key={a.name} value={a.name}>
-                        {a.name} ({a.type} Cirebon) — Estimasi kurir tiba: {a.estimatedPickupHours}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Info Khusus Zona 3 (Luar Cirebon) */}
+                  {distanceZone === 'luar_cirebon' && (
+                    <div className="p-3.5 rounded-xl bg-sky-950/40 border border-sky-500/30 space-y-2 text-xs">
+                      <div className="flex items-center gap-2 text-sky-300 font-bold">
+                        <Truck className="w-4 h-4 text-sky-400" />
+                        <span>Kirim Paket ke Workshop Soleman via Ekspedisi J&T Express</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        Alamat kirim workshop: <strong>Soleman Shoes Repair, Jl. Dr. Cipto Mangunkusumo No. 42 (Dekat CSB Mall), Kesambi, Kota Cirebon 45131</strong> (WhatsApp: 0881-4519-955).
+                      </p>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                          Nomor Resi J&T Express (Boleh diisi sekarang atau nanti via chat WA):
+                        </label>
+                        <input
+                          type="text"
+                          value={trackingNumber}
+                          onChange={(e) => setTrackingNumber(e.target.value)}
+                          placeholder="Contoh: JNT8821948192 (Boleh dikosongkan dulu)"
+                          className="w-full bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Alamat Lengkap */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                    Alamat Lengkap (Jalan, No Rumah, RT/RW, Perumahan) *
-                  </label>
-                  <textarea
-                    value={fullAddress}
-                    onChange={(e) => setFullAddress(e.target.value)}
-                    rows={2}
-                    placeholder="Contoh: Jl. Tuparev No. 128, RT 02/RW 04, Sutawinangun, Kedawung, Cirebon"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
-                  />
+                {/* HIGHLIGHT: LOKASI OTOMATIS LEWAT WA */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-950 to-slate-950 border border-emerald-500/30 space-y-2.5">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                    <Share2 className="w-4 h-4 text-emerald-400" />
+                    <span>Lokasi Penjemputan Otomatis Lewat WhatsApp (Share Loc)</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    ✨ <strong>Tanpa perlu repot mengetik alamat panjang atau mencari titik koordinat GPS!</strong>
+                    <br />
+                    Setelah Anda menekan tombol booking, pesan otomatis akan terbuka di WhatsApp. Anda cukup mengirimkan <em>Share Location (Kirim Lokasi Terkini)</em> langsung di chat WhatsApp Kurir Soleman.
+                  </p>
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-300 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Kurir Soleman akan langsung menavigasi ke titik share loc Anda.</span>
+                  </div>
                 </div>
 
-                {/* Patokan Rumah */}
+                {/* Patokan Rumah / Catatan Ringkas (Opsional) */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                    Patokan Rumah (Sangat Mempermudah Kurir)
+                    Patokan Rumah / Ciri-Ciri (Opsional)
                   </label>
                   <input
                     type="text"
                     value={landmark}
                     onChange={(e) => setLandmark(e.target.value)}
-                    placeholder="Contoh: Pagar hitam depan Indomaret Tuparev, rumah cat hijau"
+                    placeholder="Contoh: Depan Indomaret Tuparev, pagar hitam (Boleh dikosongkan)"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
-                {/* Jam Jemput */}
+                {/* Sesi Jam Jemput */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                    Preferensi Jam Jemput Kurir
+                    Sesi Jam Jemput Kurir Soleman:
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
@@ -823,8 +1086,105 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
                     ))}
                   </div>
                 </div>
-              </>
+
+              </div>
             )}
+          </div>
+
+          {/* Card 4: PILIHAN METODE PEMBAYARAN: QRIS DAN COD */}
+          <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 space-y-5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-xl bg-purple-500/20 text-purple-400 font-bold text-xs flex items-center justify-center">4</span>
+                <h3 className="text-sm font-bold text-white">Metode Pembayaran (QRIS & COD)</h3>
+              </div>
+              <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                Pilih Sesuai Kenyamanan
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              
+              {/* OPSI 1: COD (Cash on Delivery) */}
+              <div
+                onClick={() => setPaymentMethod('cod')}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                  paymentMethod === 'cod'
+                    ? 'bg-amber-500/15 border-amber-500 ring-1 ring-amber-400/50'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-bold text-white">COD (Bayar Tunai)</span>
+                  </div>
+                  {paymentMethod === 'cod' && (
+                    <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Bayar tunai langsung ke <strong>Kurir Soleman</strong> saat sepatu diantar kembali ke rumah Anda. Tanpa DP!
+                </p>
+                <span className="inline-block mt-2 text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">
+                  ✓ Tanpa DP di Muka
+                </span>
+              </div>
+
+              {/* OPSI 2: QRIS Instan Resmi */}
+              <div
+                onClick={() => setPaymentMethod('qris')}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                  paymentMethod === 'qris'
+                    ? 'bg-sky-500/15 border-sky-500 ring-1 ring-sky-400/50'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                      <QrCode className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-bold text-white">QRIS Instan Resmi</span>
+                  </div>
+                  {paymentMethod === 'qris' && (
+                    <CheckCircle2 className="w-4 h-4 text-sky-400" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Scan barcode QRIS memakai <strong>BCA, Mandiri, BRI, BNI, GoPay, OVO, Dana, ShopeePay</strong> tanpa biaya admin.
+                </p>
+                <span className="inline-block mt-2 text-[10px] text-sky-400 font-bold bg-sky-500/10 px-2 py-0.5 rounded">
+                  ✓ Semua Bank & E-Wallet
+                </span>
+              </div>
+
+            </div>
+
+            {/* QRIS preview card when selected */}
+            {paymentMethod === 'qris' && (
+              <div className="p-4 rounded-2xl bg-slate-950 border border-sky-500/30 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white p-1 shrink-0 flex items-center justify-center">
+                    <QrCode className="w-8 h-8 text-slate-950" />
+                  </div>
+                  <div>
+                    <span className="text-white font-bold block">QRIS: SOLEMAN SHOE REPAIR CIREBON</span>
+                    <span className="text-[11px] text-slate-400">NMID: ID1024358920192 • Siap discan setelah booking</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQrisModal(true)}
+                  className="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-xl shrink-0"
+                >
+                  Lihat QRIS
+                </button>
+              </div>
+            )}
+
           </div>
 
         </div>
@@ -833,11 +1193,16 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
         <div className="lg:col-span-5 sticky top-24 space-y-5">
           <div className="rounded-3xl bg-slate-900 border border-slate-800 p-6 space-y-5 shadow-2xl">
             
-            <div className="border-b border-slate-800 pb-3">
-              <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Rincian Order Lengkap</span>
-              <h3 className="text-lg font-extrabold text-white mt-0.5">
-                Total {pairsCount} Pasang Sepatu
-              </h3>
+            <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Ringkasan Biaya</span>
+                <h3 className="text-lg font-extrabold text-white mt-0.5">
+                  Total {pairsCount} Pasang
+                </h3>
+              </div>
+              <span className="text-xs font-mono font-bold text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                {areaType} Cirebon
+              </span>
             </div>
 
             {/* Validation alert */}
@@ -848,23 +1213,23 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
               </div>
             )}
 
-            {/* List per pair with materials and severities */}
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            {/* List per item */}
+            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
               {shoeDetailsWithPrices.map((sh, idx) => (
                 <div key={sh.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1 text-xs">
                   <div className="flex items-center justify-between font-bold">
-                    <span className="text-white">Sepatu #{idx + 1}: {sh.shoeBrand || 'Belum diisi'}</span>
+                    <span className="text-white">#{idx + 1} {sh.shoeBrand || 'Belum diisi'}</span>
                     <span className="text-amber-400 font-mono">Rp {sh.price.toLocaleString('id-ID')}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-400">
                     <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">{sh.shoeType}</span>
                     <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-300">{sh.material}</span>
                     <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-sky-300">
-                      Kerusakan: {sh.severity.toUpperCase()}
+                      Tingkat: {sh.severity.toUpperCase()}
                     </span>
                     {sh.photoUrl && (
                       <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
-                        📷 Foto Terlampir
+                        📷 Foto Ada
                       </span>
                     )}
                   </div>
@@ -875,20 +1240,41 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
               ))}
             </div>
 
-            {/* Price breakdown */}
+            {/* Live Ongkir & Calculation */}
             <div className="pt-2 border-t border-slate-800 space-y-2 text-xs">
               <div className="flex justify-between text-slate-400">
-                <span>Subtotal Layanan ({pairsCount} psg)</span>
+                <span>Subtotal Jasa ({pairsCount} psg)</span>
                 <span className="font-mono text-white">Rp {totalServicesPrice.toLocaleString('id-ID')}</span>
               </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Ongkir Antar-Jemput Cirebon</span>
-                <span className={deliveryFee === 0 ? 'text-emerald-400 font-bold' : 'font-mono text-white'}>
-                  {deliveryFee === 0 ? 'GRATIS (Promo 2+ Psg)' : `Rp ${deliveryFee.toLocaleString('id-ID')}`}
+
+              <div className="flex justify-between items-center text-slate-400">
+                <div>
+                  <span>Ongkir Kurir Soleman</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {areaType === 'Kota' ? 'Khusus Seluruh Kota Cirebon' : `${areaType} Cirebon (${pairsCount} psg)`}
+                  </span>
+                </div>
+                <span className={deliveryFee === 0 ? 'text-emerald-400 font-bold text-xs' : 'font-mono text-white'}>
+                  {deliveryFee === 0 ? 'GRATIS ONGKIR' : `Rp ${deliveryFee.toLocaleString('id-ID')}`}
                 </span>
               </div>
+
+              {/* Informative Ongkir Note */}
+              {areaType === 'Kabupaten' && pairsCount === 1 && (
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
+                  💡 <strong>Tips Hemat:</strong> Tambah 1 pasang lagi untuk menikmati <strong>GRATIS ONGKIR</strong> Kabupaten Cirebon!
+                </div>
+              )}
+
+              <div className="flex justify-between text-slate-400 pt-1">
+                <span>Metode Bayar</span>
+                <span className="font-bold text-amber-300 uppercase">
+                  {paymentMethod === 'cod' ? 'COD (Bayar Tunai)' : 'QRIS Instan'}
+                </span>
+              </div>
+
               <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline font-bold">
-                <span className="text-sm text-slate-200">Total Estimasi</span>
+                <span className="text-sm text-slate-200">Total Pembayaran</span>
                 <span className="text-2xl text-amber-400 font-mono font-black">
                   Rp {grandTotal.toLocaleString('id-ID')}
                 </span>
@@ -899,33 +1285,84 @@ export const PickupOrderSection: React.FC<PickupOrderSectionProps> = ({
             <div className="space-y-2.5 pt-1">
               <button
                 type="button"
-                onClick={() => handleCreateOrder(false)}
+                onClick={() => handleCreateOrder(true)}
                 className="w-full py-4 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
               >
-                <ShieldCheck className="w-4 h-4 stroke-[2.4]" />
-                <span>Kirim Order & Foto ke Dashboard Admin</span>
+                <MessageSquare className="w-4 h-4 stroke-[2.4]" />
+                <span>Pesan Sekarang & Share Loc ke WhatsApp</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleCreateOrder(true)}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-950 hover:bg-slate-800 text-emerald-400 border border-slate-700/80 flex items-center justify-center gap-2 transition-colors"
+                onClick={() => handleCreateOrder(false)}
+                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700/80 flex items-center justify-center gap-2 transition-colors"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Kirim juga via WhatsApp (0881-4519-955)</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                <span>Simpan Pesanan di Web Saja</span>
               </button>
             </div>
 
             <div className="pt-2 text-[11px] text-slate-400 space-y-1">
-              <p>✓ Foto sepatu Anda langsung terkirim ke dashboard admin Soleman untuk diperiksa kondisinya.</p>
-              <p>✓ Kurir Herdi akan segera ditugaskan menjemput ke alamat Anda se-Cirebon.</p>
-              <p>✓ Garansi resmi 30 hingga 90 hari untuk setiap pasang sepatu.</p>
+              <p>✓ Lokasi jemput otomatis dikirim via Share Loc di WhatsApp Kurir Soleman.</p>
+              <p>✓ Pembayaran {paymentMethod === 'cod' ? 'COD bayar tunai saat sepatu diantar kembali.' : 'QRIS instan resmi semua bank & e-wallet.'}</p>
+              <p>✓ Garansi servis resmi 30 hingga 90 hari.</p>
             </div>
 
           </div>
         </div>
 
       </div>
+
+      {/* QRIS POPUP MODAL */}
+      {showQrisModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-slate-900 border border-amber-500/40 p-6 space-y-5 shadow-2xl relative text-center">
+            <button
+              onClick={() => setShowQrisModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 text-lg"
+            >
+              ✕
+            </button>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                QRIS Pembayaran Resmi
+              </span>
+              <h3 className="text-lg font-black text-white">
+                SOLEMAN SHOE REPAIR
+              </h3>
+              <p className="text-[11px] text-slate-400">NMID: ID1024358920192 • Cirebon</p>
+            </div>
+
+            {/* QR Code graphic */}
+            <div className="bg-white p-5 rounded-2xl mx-auto w-56 h-56 flex flex-col items-center justify-center shadow-lg border border-slate-200">
+              <div className="w-full flex items-center justify-between pb-2 border-b border-slate-200">
+                <span className="text-[10px] font-black text-red-600 tracking-wider">QRIS</span>
+                <span className="text-[9px] font-bold text-slate-600">GPN</span>
+              </div>
+              <div className="py-2">
+                <QrCode className="w-32 h-32 text-slate-950" />
+              </div>
+              <span className="text-[9px] text-slate-500 font-mono">BCA • Mandiri • BRI • BNI • GoPay • OVO</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <span className="text-slate-400 block">Total Tagihan:</span>
+              <span className="text-xl font-black text-amber-400 font-mono">
+                Rp {grandTotal.toLocaleString('id-ID')}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowQrisModal(false)}
+              className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl"
+            >
+              Tutup & Lanjutkan Pesanan
+            </button>
+          </div>
+        </div>
+      )}
 
     </section>
   );

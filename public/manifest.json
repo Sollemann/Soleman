@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "Soleman - Perbaikan Sepatu Cirebon",
+  "short_name": "Soleman",
+  "description": "Perbaikan dan perawatan sepatu terlengkap di Cirebon. Bot konsultasi WA 24 jam, jahit sol benang tak kelihatan, ganti tapak trail Rp 200rb & gunung, antar-jemput kurir.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Bot Konsultasi Kerusakan",
+      "short_name": "Bot WA",
+      "description": "Konsultasi kerusakan sepatu interaktif 24 jam",
+      "url": "/#bot",
+      "icons": [{ "src": "/favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "Pesan Antar-Jemput",
+      "short_name": "Jemput Sepatu",
+      "description": "Pesan Kurir Soleman jemput ke rumah",
+      "url": "/#antar-jemput",
+      "icons": [{ "src": "/favicon.ico", "sizes": "64x64" }]
+    }
+  ]
+}

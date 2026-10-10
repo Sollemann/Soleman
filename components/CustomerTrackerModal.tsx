@@ -14,7 +14,11 @@ import {
   CheckCircle2, 
   MessageSquare, 
   ExternalLink,
-  Phone
+  Phone,
+  DollarSign,
+  CreditCard,
+  QrCode,
+  Lock
 } from 'lucide-react';
 import { Order } from '../types';
 import { STATUS_LABELS, WORKSHOP_INFO } from '../data/solcreftData';
@@ -34,14 +38,16 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
   initialQuery = ''
 }) => {
   const [query, setQuery] = useState(initialQuery);
+  const [hasSearched, setHasSearched] = useState(Boolean(initialQuery));
   const [searchedOrder, setSearchedOrder] = useState<Order | null>(() => {
-    if (initialQuery) {
+    if (initialQuery.trim()) {
+      const clean = initialQuery.trim().toLowerCase();
       return orders.find(o => 
-        o.id.toLowerCase() === initialQuery.toLowerCase() || 
-        o.customerPhone.includes(initialQuery)
+        o.id.toLowerCase() === clean || 
+        o.customerPhone.replace(/[^0-9]/g, '').includes(clean)
       ) || null;
     }
-    return orders[0] || null;
+    return null; // Do NOT leak orders[0]!
   });
 
   if (!isOpen) return null;
@@ -49,17 +55,23 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = query.trim().toLowerCase();
+    setHasSearched(true);
+    if (!clean) {
+      setSearchedOrder(null);
+      return;
+    }
+
     const found = orders.find(o => 
       o.id.toLowerCase() === clean || 
-      o.customerPhone.includes(clean) ||
-      o.customerName.toLowerCase().includes(clean)
+      o.customerPhone.replace(/[^0-9]/g, '') === clean.replace(/[^0-9]/g, '') ||
+      o.customerPhone.toLowerCase() === clean
     );
     setSearchedOrder(found || null);
   };
 
   const steps = [
     { key: 'menunggu_jemput', label: '1. Dijadwalkan' },
-    { key: 'perjalanan_workshop', label: '2. Dijemput Kurir' },
+    { key: 'perjalanan_workshop', label: '2. Dijemput Kurir Soleman' },
     { key: 'pengerjaan', label: '3. Diservis Teknisi' },
     { key: 'quality_check', label: '4. Quality Control' },
     { key: 'siap_antar', label: '5. Diantar Pulang' },
@@ -88,6 +100,9 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
               <Search className="w-3.5 h-3.5" /> Lacak Status Sepatu Anda
             </div>
             <h3 className="text-xl font-extrabold text-white mt-1">Status Progres Reparasi Soleman</h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Masukkan nomor kode seri order untuk menampilkan data reparasi sepatu Anda.
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -113,6 +128,26 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
             Cari Status
           </button>
         </form>
+
+        {/* Quick query chips */}
+        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+          <span>Contoh Kode Seri:</span>
+          {['SLC-3891', 'SLC-3892', 'SLC-3893'].map((code) => (
+            <button
+              key={code}
+              type="button"
+              onClick={() => {
+                setQuery(code);
+                const found = orders.find(o => o.id.toLowerCase() === code.toLowerCase());
+                setSearchedOrder(found || null);
+                setHasSearched(true);
+              }}
+              className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-amber-300 font-mono text-[10px] border border-slate-700 transition-colors"
+            >
+              {code}
+            </button>
+          ))}
+        </div>
 
         {searchedOrder ? (
           <div className="space-y-6 pt-2">
@@ -173,7 +208,34 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
               </div>
             </div>
 
-            {/* Multi-shoe breakdown if present */}
+            {/* Payment & Courier Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-amber-400" /> Metode Pembayaran:
+                </span>
+                <p className="text-slate-200 font-semibold">
+                  {searchedOrder.paymentMethod === 'cod' ? 'COD (Bayar Tunai ke Kurir Soleman)' : 'QRIS Resmi Soleman Cirebon'}
+                </p>
+                <p className="text-[11px] text-amber-300 font-mono">
+                  Total Biaya: Rp {searchedOrder.totalAmount.toLocaleString('id-ID')}
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-sky-400" /> Kurir Ditugaskan:
+                </span>
+                <p className="text-slate-200 font-semibold">
+                  {searchedOrder.assignedCourier || 'Kurir Soleman'}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Antar-Jemput: {searchedOrder.location.areaName}
+                </p>
+              </div>
+            </div>
+
+            {/* Multi-shoe breakdown */}
             {searchedOrder.shoes && searchedOrder.shoes.length > 0 && (
               <div className="space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -194,15 +256,6 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
                       <p className="text-[11px] text-slate-300">
                         Servis: {sh.selectedServices.map(s => s.name).join(', ')}
                       </p>
-                      {sh.photoUrl && (
-                        <div className="pt-1">
-                          <img
-                            src={sh.photoUrl}
-                            alt={`Foto Sepatu #${idx + 1}`}
-                            className="w-16 h-16 object-cover rounded-xl border border-slate-700"
-                          />
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -228,30 +281,6 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
               </div>
             </div>
 
-            {/* Location & Contact Kurir */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-300 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-amber-400" /> Lokasi Antar-Jemput:
-                </span>
-                {searchedOrder.location.mapsUrl && (
-                  <a
-                    href={searchedOrder.location.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sky-400 hover:underline flex items-center gap-1 text-[11px]"
-                  >
-                    <span>Cek di Google Maps</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-              <p className="text-slate-400">{searchedOrder.location.fullAddress}</p>
-              {searchedOrder.location.landmark && (
-                <p className="text-[11px] text-amber-400/90">Patokan: {searchedOrder.location.landmark}</p>
-              )}
-            </div>
-
             {/* WA Help Button */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               <a
@@ -273,13 +302,24 @@ export const CustomerTrackerModal: React.FC<CustomerTrackerModalProps> = ({
             </div>
 
           </div>
-        ) : (
-          <div className="text-center py-8 text-slate-400 space-y-2">
-            <p className="text-sm font-semibold text-slate-300">
+        ) : hasSearched ? (
+          <div className="text-center py-10 bg-slate-950/60 rounded-2xl border border-slate-800 space-y-2">
+            <Lock className="w-8 h-8 text-amber-400 mx-auto" />
+            <p className="text-sm font-bold text-slate-200">
               Tidak ditemukan data order dengan kata kunci "{query}".
             </p>
-            <p className="text-xs text-slate-500">
-              Pastikan format nomor order sudah benar (contoh: SLC-3891) atau masukkan nomor WhatsApp yang terdaftar.
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Pastikan format kode seri benar (contoh: SLC-3891) atau masukkan nomor WhatsApp pemesanan Anda.
+            </p>
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-slate-950/60 rounded-2xl border border-slate-800 space-y-2">
+            <Lock className="w-8 h-8 text-slate-500 mx-auto" />
+            <p className="text-xs font-semibold text-slate-300">
+              Privasi Terjaga
+            </p>
+            <p className="text-xs text-slate-500 max-w-xs mx-auto">
+              Ketikkan nomor kode seri order sepatu Anda di kolom pencarian di atas untuk melihat status pengerjaan secara privat.
             </p>
           </div>
         )}

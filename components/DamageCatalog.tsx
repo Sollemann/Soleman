@@ -31,14 +31,15 @@ interface DamageCatalogProps {
 export const DamageCatalog: React.FC<DamageCatalogProps> = ({
   onSelectServiceForPickup
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<DamageCategory>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
 
   const categories = [
-    { id: 'all', label: 'Semua Kerusakan' },
-    { id: 'sol', label: 'Sol & Lem Lepas' },
-    { id: 'jahit', label: 'Jahit & Sulam Sol' },
+    { id: 'all', label: 'Semua Layanan' },
+    { id: 'best', label: '👑 Menu Terbaik Soleman' },
+    { id: 'sol', label: 'Ganti Tapak & Sol Lepas' },
+    { id: 'jahit', label: 'Jahit Sol (Hidden, Silang, Zig-Zag)' },
     { id: 'warna', label: 'Warna & Unyellowing' },
     { id: 'kebersihan', label: 'Cuci & Deep Clean' },
     { id: 'busa', label: 'Busa Tumit & Insole' },
@@ -46,7 +47,13 @@ export const DamageCatalog: React.FC<DamageCatalogProps> = ({
   ];
 
   const filteredServices = SERVICES_CATALOG.filter((item) => {
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesCategory = 
+      selectedCategory === 'all' 
+        ? true 
+        : selectedCategory === 'best' 
+          ? Boolean(item.isBestMenu) 
+          : item.category === selectedCategory;
+
     const query = searchQuery.toLowerCase();
     const matchesSearch = 
       item.name.toLowerCase().includes(query) ||
@@ -114,6 +121,53 @@ export const DamageCatalog: React.FC<DamageCatalogProps> = ({
             </button>
           ))}
         </div>
+
+        {/* Quick Service Highlights: Jahit Sol & Ganti Tapak Spesifik */}
+        <div className="pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-4xl mx-auto">
+            <span className="text-[11px] text-amber-400 font-bold mr-1">Rekomendasi Cepat:</span>
+            {[
+              { label: '🧵 Jahit Benang Gak Kelihatan', query: 'benang gak kelihatan', cat: 'jahit' },
+              { label: '🏔️ Ganti Tapak Trail (Rp 200rb + Foto WA)', query: 'trail', cat: 'sol' },
+              { label: '⛰️ Ganti Tapak Gunung (Lugged)', query: 'gunung', cat: 'sol' },
+              { label: '⚔️ Jahit Sol Silang (X)', query: 'silang', cat: 'jahit' },
+              { label: '⚡ Jahit Sol Zig-Zag', query: 'zig-zag', cat: 'jahit' },
+              { label: '👟 Ganti Tapak Sekolah', query: 'sekolah', cat: 'sol' },
+              { label: '👞 Ganti Tapak Kantor/Pantofel', query: 'kantor', cat: 'sol' },
+              { label: '🦺 Ganti Tapak Proyek/Safety', query: 'proyek', cat: 'sol' },
+              { label: '⚽ Ganti Tapak Futsal', query: 'futsal', cat: 'sol' },
+              { label: '🏃 Ganti Tapak Olahraga', query: 'olahraga', cat: 'sol' },
+              { label: '⚽ Ganti Tapak Bola', query: 'bola', cat: 'sol' },
+              { label: '🩴 Ganti Tapak Sendal Biasa', query: 'sendal biasa', cat: 'sol' },
+              { label: '👡 Ganti Tapak Sendal Kulit', query: 'sendal kulit', cat: 'sol' },
+            ].map(item => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory('all');
+                  setSearchQuery(item.query);
+                }}
+                className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all ${
+                  searchQuery.toLowerCase().includes(item.query.toLowerCase())
+                    ? 'bg-amber-400 text-slate-950 font-bold border-amber-300 shadow-sm'
+                    : 'bg-slate-950/80 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-[10px] px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 hover:bg-red-500/30 font-bold"
+              >
+                Reset Filter
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Cards Grid */}
@@ -136,15 +190,27 @@ export const DamageCatalog: React.FC<DamageCatalogProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
                 
                 {/* Badges on top of image */}
-                <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-1 flex-wrap">
                   <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-950/80 backdrop-blur-md text-amber-300 border border-amber-500/30">
                     Garansi {service.warrantyDays} Hari
                   </span>
-                  {service.popular && (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 shadow-md uppercase tracking-wider">
-                      Terpopuler
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {service.isBestMenu && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md uppercase tracking-wider">
+                        👑 Menu Terbaik
+                      </span>
+                    )}
+                    {service.requiresPhotoConfirmation && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500 text-slate-950 shadow uppercase tracking-wider">
+                        📸 Konfirmasi Foto WA
+                      </span>
+                    )}
+                    {!service.isBestMenu && service.popular && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 shadow-md uppercase tracking-wider">
+                        Terpopuler
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Price tag on bottom right of image */}

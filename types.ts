@@ -14,6 +14,16 @@ export type DamageCategory =
 
 export type ShoeType = 
   | 'Sneakers'
+  | 'Sepatu Sekolah'
+  | 'Sepatu Kantor / Pantofel'
+  | 'Sepatu Proyek / Safety'
+  | 'Sepatu Futsal'
+  | 'Sepatu Olah Raga / Sport'
+  | 'Sepatu Trail'
+  | 'Sepatu Gunung / Hiking'
+  | 'Sepatu Bola / Cleats'
+  | 'Sendal Biasa'
+  | 'Sendal Kulit'
   | 'Pantofel / Formal'
   | 'Boots / Safety'
   | 'Running / Sport'
@@ -45,6 +55,8 @@ export interface ServiceItem {
   durationEst: string;
   warrantyDays: number;
   popular?: boolean;
+  isBestMenu?: boolean; // Menu Terbaik Soleman
+  requiresPhotoConfirmation?: boolean; // Konfirmasi foto bahan ke WA pelanggan sebelum dikerjakan
   suitableShoes: ShoeType[];
   iconName: string;
   beforeAfterDescription: string;
@@ -59,15 +71,27 @@ export type OrderStatus =
   | 'siap_antar'
   | 'selesai';
 
+export type PaymentMethod = 'qris' | 'cod';
+
+export type PaymentStatus = 'menunggu_pembayaran' | 'lunas' | 'cod_pending' | 'cod_selesai';
+
+export type DistanceZone = 'dekat_kota' | 'jauh_kabupaten' | 'luar_cirebon';
+
+export type LogisticsPartner = 'kurir_soleman' | 'grab_maxim' | 'jnt_express';
+
 export interface PickupLocation {
-  areaName: string; // Kecamatan di Cirebon
-  fullAddress: string;
-  landmark: string; // Patokan rumah/toko
+  areaName: string; // Kecamatan di Cirebon atau Kota Asal
+  areaType?: 'Kota' | 'Kabupaten' | 'Luar_Cirebon'; // Wilayah
+  distanceZone?: DistanceZone; // Berdasarkan jarak
+  logisticsPartner?: LogisticsPartner; // Kurir Soleman, Grab/Maxim, atau J&T Express
+  fullAddress?: string;
+  landmark?: string;
+  trackingNumber?: string; // No. Resi J&T Express jika dikirim dari luar Cirebon
   lat?: number;
   lng?: number;
   accuracy?: number;
   mapsUrl?: string;
-  detectedViaGps?: boolean;
+  shareLocViaWhatsApp?: boolean; // Lokasi otomatis dishare via WhatsApp
 }
 
 export interface OrderTimelineStep {
@@ -92,6 +116,7 @@ export interface ShoeItemDetail {
 
 export interface Order {
   id: string;
+  customerId?: string; // ID Akun Pelanggan terdaftar
   customerName: string;
   customerPhone: string;
   shoeBrand: string;
@@ -107,6 +132,12 @@ export interface Order {
   pickupType: 'antar_jemput' | 'hanya_jemput' | 'drop_off';
   preferredTimeSlot: 'pagi' | 'siang' | 'sore';
   location: PickupLocation;
+  logisticsPartner?: LogisticsPartner;
+  distanceZone?: DistanceZone;
+  trackingNumber?: string; // Resi J&T Express
+  customerConfirmedMaterialPhoto?: boolean; // Konfirmasi foto bahan cocok
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
   totalServicesPrice: number;
   deliveryFee: number;
   totalAmount: number;
@@ -122,8 +153,28 @@ export interface Order {
   internalAdminNotes?: string;
 }
 
+export interface CustomerUser {
+  id: string;
+  name: string;
+  phone: string; // No WhatsApp terverifikasi
+  email?: string;
+  savedArea?: string;
+  savedAddress?: string;
+  createdAt: string;
+  lastLogin: string;
+  securityBadge: string;
+  verified: boolean;
+}
+
 export interface AdminUser {
   email: string;
+  name: string;
+  role: string;
+  loggedAt?: string;
+}
+
+export interface CourierUser {
+  username: string;
   name: string;
   role: string;
   loggedAt?: string;

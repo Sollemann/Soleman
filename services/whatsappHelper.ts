@@ -39,19 +39,35 @@ ${order.customNotes ? `- Keluhan/Catatan: _"${order.customNotes}"_` : ''}
 ${serviceList}`;
   }
 
+  const paymentText = order.paymentMethod === 'qris'
+    ? `💳 *Metode Pembayaran:* QRIS Instan (BCA/Mandiri/BRI/BNI/GoPay/OVO/Dana)`
+    : `💵 *Metode Pembayaran:* COD (Bayar Tunai ke Kurir Soleman saat Antar)`;
+
+  const photoConfirmNeeded = order.selectedServices.some(s => s.requiresPhotoConfirmation);
+  const photoConfirmText = photoConfirmNeeded || order.customerConfirmedMaterialPhoto
+    ? `\n📸 *KONFIRMASI BAHAN SOL:* Mohon kirimkan foto sampel bahan & tapak ke WA saya sebelum mulai dikerjakan ya Kak, untuk memastikan kecocokan model & ukuran!`
+    : '';
+
+  const logisticsLabel = order.logisticsPartner === 'jnt_express'
+    ? `📦 *Logistik Ekspedisi:* J&T Express / SiCepat (Luar Cirebon)${order.trackingNumber ? `\n🏷️ *No. Resi J&T:* ${order.trackingNumber}` : '\n*(No. resi akan saya kirim setelah paket dikirim ke workshop)*'}`
+    : order.logisticsPartner === 'grab_maxim'
+      ? `🛵 *Logistik Pengantaran:* Mitra GrabExpress / Maxim Delivery & Kurir Soleman (Radius Kabupaten)`
+      : `🛵 *Logistik Pengantaran:* Kurir Internal Soleman (Area Dekat / Kota Cirebon)`;
+
   const locationText = order.pickupType === 'drop_off'
     ? `🏢 *Metode:* Drop-off Langsung ke Workshop Soleman (Jl. Dr. Cipto No. 42 Cirebon)`
-    : `🛵 *Metode:* Antar-Jemput Kurir Soleman (Herdi)
-📍 *Wilayah Cirebon:* ${order.location.areaName}
-🏠 *Alamat Lengkap:* ${order.location.fullAddress}
-🚩 *Patokan:* ${order.location.landmark || '-'}
-${order.location.mapsUrl ? `🗺️ *Titik Google Maps Kurir:* ${order.location.mapsUrl}` : ''}
-${order.location.coords ? `🌐 *Koordinat GPS:* ${order.location.coords.lat.toFixed(5)}, ${order.location.coords.lng.toFixed(5)}` : ''}
+    : `${logisticsLabel}
+📍 *Wilayah / Jarak:* ${order.location.areaName} (${order.distanceZone === 'luar_cirebon' ? 'Luar Cirebon' : order.location.areaType || 'Cirebon'})
+📍 *Titik Lokasi:* *Saya langsung kirim Share Location (Share Loc) di chat WhatsApp ini ya Kurir Soleman!* 🛵💨${order.location.fullAddress && !order.location.fullAddress.includes('Share Loc') ? `\n🏠 *Patokan Tambahan:* ${order.location.fullAddress}` : ''}
 ⏰ *Jadwal Jemput:* Sesi ${order.preferredTimeSlot.toUpperCase()}`;
 
   const photoNote = (order.photos && order.photos.length > 0) || order.photoUrl
-    ? `📸 *FOTO SEPATU RUSAK:* Sudah terunggah di sistem & saya siap kirim foto tambahan ke chat ini agar admin mudah cek kondisinya.`
-    : `📸 *FOTO SEPATU RUSAK:* Saya akan kirim foto fisiknya ke chat ini untuk dicek admin Soleman.`;
+    ? `📸 *FOTO SEPATU RUSAK:* Sudah terunggah di sistem & saya siap kirim foto tambahan ke chat ini agar admin mudah cek kondisinya.${photoConfirmText}`
+    : `📸 *FOTO SEPATU RUSAK:* Saya akan kirim foto fisiknya ke chat ini untuk dicek admin Soleman.${photoConfirmText}`;
+
+  const ongkirText = order.deliveryFee === 0 
+    ? (order.location.areaType === 'Kota' || order.distanceZone === 'dekat_kota' ? 'GRATIS (Khusus Seluruh Kota Cirebon)' : 'GRATIS (Promo Kab. Cirebon 2+ Pasang)')
+    : `Rp ${order.deliveryFee.toLocaleString('id-ID')} (${order.distanceZone === 'luar_cirebon' ? 'Ekspedisi J&T Express' : 'Ongkir Jarak Jauh Grab/Maxim/Kurir'})`;
 
   const message = `*HALO SOLEMAN CIREBON!* 👟✨
 Saya ingin konfirmasi booking perbaikan sepatu & layanan antar-jemput.
@@ -67,12 +83,14 @@ ${photoNote}
 
 ${locationText}
 
-💰 *ESTIMASI BIAYA:*
-- Subtotal Servis (${order.pairsCount} psg): Rp ${order.totalServicesPrice.toLocaleString('id-ID')}
-- Ongkir Kurir Cirebon: ${order.deliveryFee === 0 ? 'GRATIS (Promo 2+ pasang)' : `Rp ${order.deliveryFee.toLocaleString('id-ID')}`}
-- *TOTAL ESTIMASI:* *Rp ${order.totalAmount.toLocaleString('id-ID')}*
+${paymentText}
 
-Pesanan & foto sudah saya kirimkan ke dashboard admin. Terima kasih Soleman! 🙏`;
+💰 *RINCIAN BIAYA:*
+- Subtotal Servis (${order.pairsCount} psg): Rp ${order.totalServicesPrice.toLocaleString('id-ID')}
+- Ongkir Kurir Cirebon: *${ongkirText}*
+- *TOTAL BIAYA:* *Rp ${order.totalAmount.toLocaleString('id-ID')}*
+
+Pesanan sudah tercatat di sistem Soleman Cirebon. Mohon konfirmasi jadwal kurirnya ya Kak. Terima kasih! 🙏`;
 
   return `https://wa.me/${WORKSHOP_INFO.phone}?text=${encodeURIComponent(message)}`;
 }
@@ -86,7 +104,6 @@ export function buildStatusNotificationWhatsAppUrl(
   customDriverNote?: string
 ): string {
   const statusInfo = STATUS_LABELS[targetStatus];
-  // Bersihkan nomor WhatsApp pelanggan (ganti 08xx jadi 628xx)
   let cleanPhone = order.customerPhone.replace(/[^0-9]/g, '');
   if (cleanPhone.startsWith('0')) {
     cleanPhone = '62' + cleanPhone.slice(1);
@@ -97,24 +114,28 @@ export function buildStatusNotificationWhatsAppUrl(
   let statusDescription = '';
   switch (targetStatus) {
     case 'menunggu_jemput':
-      statusDescription = `Permintaan antar-jemput Kakak telah kami jadwalkan. Tim kurir kami akan segera menuju lokasi Anda di ${order.location.areaName}.`;
+      statusDescription = `Permintaan antar-jemput Kakak telah dijadwalkan. Tim Kurir Soleman akan segera meluncur ke lokasi Anda di ${order.location.areaName}.`;
       break;
     case 'perjalanan_workshop':
-      statusDescription = `🛵 *Kurir Meluncur!* Sepatu Kakak sedang dalam penjemputan oleh kurir Herdi menuju Workshop Soleman (Jl. Dr. Cipto No. 42 Cirebon).`;
+      statusDescription = `🛵 *Kurir Meluncur!* Sepatu Kakak sedang dijemput oleh Kurir Soleman menuju Workshop (Jl. Dr. Cipto No. 42 Cirebon).`;
       break;
     case 'pengerjaan':
-      statusDescription = `🛠️ *Sedang Dikerjakan Teknisi:* Sepatu Kakak sudah berada di meja workshop dan sedang ditangani oleh ${order.technicianName} dengan standar lem & jahitan terbaik Soleman.`;
+      statusDescription = `🛠️ *Sedang Dikerjakan Teknisi:* Sepatu Kakak sedang ditangani teknisi ahli dengan standar lem Polyurethane & jahitan sol terbaik Soleman.`;
       break;
     case 'quality_check':
-      statusDescription = `🔍 *Quality Control:* Pengerjaan telah selesai! Tim Soleman sedang memastikan daya rekat sol, kerapian jahitan, dan proses steril finishing sebelum dikemas.`;
+      statusDescription = `🔍 *Quality Control:* Pengerjaan selesai! Tim Soleman sedang memastikan kerapian, daya tahan rekat, dan sterilisasi anti-jamur.`;
       break;
     case 'siap_antar':
-      statusDescription = `🎉 *Sepatu Sudah Jadi & Siap Diantar!* Sepatu kesayangan Kakak sudah kembali prima dan kurir Herdi siap mengantarkan kembali ke lokasi Kakak.`;
+      statusDescription = `🎉 *Sepatu Sudah Selesai & Siap Diantar!* Kurir Soleman siap mengantarkan kembali sepatu prima Kakak ke alamat tujuan.`;
       break;
     case 'selesai':
-      statusDescription = `✅ *Servis Selesai:* Sepatu telah diterima dengan baik. Nikmati garansi servis resmi Soleman. Terima kasih telah mempercayakan sepatu Anda pada Soleman Cirebon!`;
+      statusDescription = `✅ *Servis Selesai:* Sepatu telah diserahterimakan dengan baik. Garansi resmi servis Soleman Cirebon aktif.`;
       break;
   }
+
+  const paymentText = order.paymentMethod === 'cod'
+    ? `💵 Metode: COD (${order.paymentStatus === 'cod_selesai' ? 'Sudah Lunas Diterima Kurir' : 'Bayar Tunai saat Kurir Tiba'})`
+    : `💳 Metode: QRIS (${order.paymentStatus === 'lunas' ? 'Lunas' : 'Menunggu Pembayaran'})`;
 
   const message = `*UPDATE STATUS SERVIS SOLEMAN CIREBON* 👟✨
 
@@ -129,9 +150,10 @@ Berikut kabar terbaru mengenai sepatu Anda:
 ${statusDescription}
 ${customDriverNote ? `\n📝 *Catatan Kurir/Teknisi:* "${customDriverNote}"` : ''}
 
-📍 *Alamat Anda:* ${order.location.fullAddress}
+📍 *Alamat:* ${order.location.fullAddress}
 ${order.location.mapsUrl ? `🗺️ *Titik Antar-Jemput:* ${order.location.mapsUrl}` : ''}
 💰 *Total Biaya:* Rp ${order.totalAmount.toLocaleString('id-ID')}
+${paymentText}
 
 Jika ada pertanyaan, langsung balas pesan ini ya Kak.
 *Soleman Cirebon* - _Perbaikan Sepatu Terlengkap & Presisi_`;
@@ -146,7 +168,7 @@ export function buildConsultationWhatsAppUrl(prefillIssue?: string): string {
   const text = `Halo Soleman Cirebon! 👋
 Saya ingin konsultasi kondisi sepatu saya yang rusak:
 ${prefillIssue ? `Jenis Kerusakan: *${prefillIssue}*\n` : ''}
-Saya mau kirim foto sepatunya ke sini untuk estimasi biaya dan penjemputan kurir Herdi di wilayah Cirebon.`;
+Saya mau kirim foto sepatunya ke sini untuk estimasi biaya dan penjemputan Kurir Soleman di wilayah Cirebon.`;
 
   return `https://wa.me/${WORKSHOP_INFO.phone}?text=${encodeURIComponent(text)}`;
 }
@@ -154,13 +176,15 @@ Saya mau kirim foto sepatunya ke sini untuk estimasi biaya dan penjemputan kurir
 /**
  * Link WhatsApp untuk konfirmasi penerimaan pesanan oleh Admin ke pelanggan
  */
-export function buildOrderAcceptedWhatsAppUrl(order: Order, courierName: string = 'Herdi'): string {
+export function buildOrderAcceptedWhatsAppUrl(order: Order, courierName: string = 'Kurir Soleman'): string {
   let cleanPhone = order.customerPhone.replace(/[^0-9]/g, '');
   if (cleanPhone.startsWith('0')) {
     cleanPhone = '62' + cleanPhone.slice(1);
   } else if (!cleanPhone.startsWith('62')) {
     cleanPhone = '62' + cleanPhone;
   }
+
+  const paymentText = order.paymentMethod === 'cod' ? 'COD (Bayar Tunai ke Kurir)' : 'QRIS Resmi Soleman';
 
   const message = `*PESANAN DITERIMA ADMIN SOLEMAN CIREBON* ✅👟
 
@@ -172,6 +196,7 @@ Permintaan servis & antar-jemput sepatu Kakak telah *DITERIMA & DIKONFIRMASI* ol
 🛠️ *Layanan:* ${order.selectedServices.map(s => s.name).join(', ')}
 🛵 *Kurir Ditugaskan:* ${courierName} (No. WA: 0881-4519-955)
 ⏰ *Sesi Jemput:* ${order.preferredTimeSlot.toUpperCase()}
+💳 *Pembayaran:* ${paymentText}
 
 📍 *Alamat Penjemputan:*
 ${order.location.fullAddress}
@@ -179,15 +204,15 @@ ${order.location.landmark ? `🚩 Patokan: ${order.location.landmark}` : ''}
 ${order.location.mapsUrl ? `🗺️ Titik Maps: ${order.location.mapsUrl}` : ''}
 💰 *Total Biaya:* Rp ${order.totalAmount.toLocaleString('id-ID')}
 
-Mohon pastikan sepatu sudah siap saat kurir Herdi tiba ya Kak. Terima kasih banyak telah memilih Soleman Cirebon! 🙏`;
+Mohon pastikan sepatu sudah siap saat Kurir Soleman tiba ya Kak. Terima kasih banyak telah memilih Soleman Cirebon! 🙏`;
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
 
 /**
- * Link WhatsApp untuk Admin membagikan tugas penjemputan ke Kurir Herdi
+ * Link WhatsApp untuk Admin membagikan tugas penjemputan ke Kurir Soleman
  */
-export function buildNotifyCourierWhatsAppUrl(order: Order, courierPhone: string = '08814519955', courierName: string = 'Herdi'): string {
+export function buildNotifyCourierWhatsAppUrl(order: Order, courierPhone: string = '08814519955', courierName: string = 'Kurir Soleman'): string {
   let cleanPhone = courierPhone.replace(/[^0-9]/g, '');
   if (cleanPhone.startsWith('0')) {
     cleanPhone = '62' + cleanPhone.slice(1);
@@ -195,8 +220,12 @@ export function buildNotifyCourierWhatsAppUrl(order: Order, courierPhone: string
     cleanPhone = '62' + cleanPhone;
   }
 
+  const paymentText = order.paymentMethod === 'cod'
+    ? `💵 COD (Tagih Tunai Rp ${order.totalAmount.toLocaleString('id-ID')} saat antar)`
+    : `💳 QRIS (Non-Tunai)`;
+
   const message = `*SURAT TUGAS PENJEMPUTAN KURIR SOLEMAN* 🛵📋
-Halo ${courierName}, ada penjemputan order baru dari Admin Soleman:
+Halo ${courierName}, ada tugas antar-jemput baru dari Admin Workshop:
 
 📌 *No. Order:* #${order.id}
 👤 *Pelanggan:* ${order.customerName}
@@ -206,16 +235,17 @@ Halo ${courierName}, ada penjemputan order baru dari Admin Soleman:
 ${order.customNotes ? `📝 *Catatan:* "${order.customNotes}"` : ''}
 
 📍 *WILAYAH & ALAMAT:*
-- Area: *${order.location.areaName}*
+- Area: *${order.location.areaName}* (${order.location.areaType || 'Cirebon'})
 - Alamat: ${order.location.fullAddress}
 - Patokan: *${order.location.landmark || '-'}*
-${order.location.coords ? `- GPS: ${order.location.coords.lat.toFixed(5)}, ${order.location.coords.lng.toFixed(5)}` : ''}
+${order.location.lat && order.location.lng ? `- GPS: ${order.location.lat.toFixed(5)}, ${order.location.lng.toFixed(5)}` : ''}
 ${order.location.mapsUrl ? `🗺️ *LINK MAPS NAVIGASI:* ${order.location.mapsUrl}` : ''}
 
 ⏰ *Jadwal Jemput:* Sesi ${order.preferredTimeSlot.toUpperCase()}
-💰 *Ongkir:* ${order.deliveryFee === 0 ? 'GRATIS (Promo)' : `Rp ${order.deliveryFee.toLocaleString('id-ID')}`}
+💰 *Ongkir:* ${order.deliveryFee === 0 ? 'GRATIS' : `Rp ${order.deliveryFee.toLocaleString('id-ID')}`}
+💳 *Pembayaran:* ${paymentText}
 
-Harap segera meluncur dan konfirmasi jika sepatu sudah diambil. Semangat di jalan kurir Herdi! 🚀`;
+Harap segera meluncur dan konfirmasi jika sepatu sudah diambil. Semangat di jalan Kurir Soleman! 🚀`;
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }

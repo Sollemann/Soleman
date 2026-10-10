@@ -169,6 +169,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       totalServicesPrice: chosenService.price,
       deliveryFee: 10000,
       totalAmount: chosenService.price + 10000,
+      paymentMethod: 'cod',
+      paymentStatus: 'cod_pending',
       status: 'pengerjaan',
       isAcceptedByAdmin: true,
       acceptedAt: new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) + ' WIB',
@@ -497,9 +499,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                   ) : null}
 
-                  <span className="font-bold text-amber-400 font-mono block pt-1 text-xs">
-                    Total: Rp {order.totalAmount.toLocaleString('id-ID')}
-                  </span>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="font-bold text-amber-400 font-mono text-xs">
+                      Total: Rp {order.totalAmount.toLocaleString('id-ID')}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${
+                      order.paymentMethod === 'cod'
+                        ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                        : 'bg-sky-500/10 text-sky-300 border-sky-500/30'
+                    }`}>
+                      {order.paymentMethod === 'cod' ? '💵 COD' : '💳 QRIS'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* PRIVACY-PROTECTED LOCATION (4 cols): Route & Location sent directly via WA */}
@@ -622,7 +633,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             {/* Courier Selection */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-300">Pilih Kurir Solcreft Penjemput:</label>
+              <label className="block text-xs font-bold text-slate-300">Pilih Kurir Soleman Penjemput:</label>
               <div className="space-y-1.5">
                 {COURIER_DRIVERS.map(driver => (
                   <div
