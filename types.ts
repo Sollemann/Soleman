@@ -1,0 +1,188 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export type DamageCategory = 
+  | 'all'
+  | 'sol' 
+  | 'jahit' 
+  | 'warna' 
+  | 'kebersihan' 
+  | 'busa' 
+  | 'kulit_upper';
+
+export type ShoeType = 
+  | 'Sneakers'
+  | 'Sepatu Sekolah'
+  | 'Sepatu Kantor / Pantofel'
+  | 'Sepatu Proyek / Safety'
+  | 'Sepatu Futsal'
+  | 'Sepatu Olah Raga / Sport'
+  | 'Sepatu Trail'
+  | 'Sepatu Gunung / Hiking'
+  | 'Sepatu Bola / Cleats'
+  | 'Sendal Biasa'
+  | 'Sendal Kulit'
+  | 'Pantofel / Formal'
+  | 'Boots / Safety'
+  | 'Running / Sport'
+  | 'Heels / Flat Shoes'
+  | 'Canvas / Casual';
+
+export type ShoeMaterial =
+  | 'Canvas / Kain'
+  | 'Kulit Asli (Leather)'
+  | 'Suede / Nubuck'
+  | 'Kulit Sintetis (Faux)'
+  | 'Mesh / Rajut / Flyknit'
+  | 'Karet / EVA / Foam';
+
+export type DamageSeverity = 
+  | 'kecil'    // Kerusakan ringan / minor (ujung lepas tipis, baret halus)
+  | 'normal'   // Kerusakan sedang / standard (mangap separuh, kotor menempel, midsole kuning)
+  | 'hard';    // Kerusakan parah / berat (sol lepas total, patah terbelah, kanvas robek lebar)
+
+export interface ServiceItem {
+  id: string;
+  name: string;
+  category: DamageCategory;
+  damageTitle: string;
+  symptoms: string[];
+  solution: string;
+  price: number;
+  priceFormatted: string;
+  durationEst: string;
+  warrantyDays: number;
+  popular?: boolean;
+  isBestMenu?: boolean; // Menu Terbaik Soleman
+  requiresPhotoConfirmation?: boolean; // Konfirmasi foto bahan ke WA pelanggan sebelum dikerjakan
+  suitableShoes: ShoeType[];
+  iconName: string;
+  beforeAfterDescription: string;
+  image: string;
+}
+
+export type OrderStatus = 
+  | 'menunggu_jemput'
+  | 'perjalanan_workshop'
+  | 'pengerjaan'
+  | 'quality_check'
+  | 'siap_antar'
+  | 'selesai';
+
+export type PaymentMethod = 'qris' | 'cod';
+
+export type PaymentStatus = 'menunggu_pembayaran' | 'lunas' | 'cod_pending' | 'cod_selesai';
+
+export type DistanceZone = 'dekat_kota' | 'jauh_kabupaten' | 'luar_cirebon';
+
+export type LogisticsPartner = 'kurir_soleman' | 'grab_maxim' | 'jnt_express';
+
+export interface PickupLocation {
+  areaName: string; // Kecamatan di Cirebon atau Kota Asal
+  areaType?: 'Kota' | 'Kabupaten' | 'Luar_Cirebon'; // Wilayah
+  distanceZone?: DistanceZone; // Berdasarkan jarak
+  logisticsPartner?: LogisticsPartner; // Kurir Soleman, Grab/Maxim, atau J&T Express
+  fullAddress?: string;
+  landmark?: string;
+  trackingNumber?: string; // No. Resi J&T Express jika dikirim dari luar Cirebon
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+  mapsUrl?: string;
+  shareLocViaWhatsApp?: boolean; // Lokasi otomatis dishare via WhatsApp
+}
+
+export interface OrderTimelineStep {
+  status: OrderStatus;
+  label: string;
+  timestamp: string;
+  description: string;
+}
+
+export interface ShoeItemDetail {
+  id: string;
+  pairNumber: number;
+  shoeBrand: string;
+  shoeType: ShoeType;
+  material: ShoeMaterial;
+  severity: DamageSeverity;
+  selectedServices: ServiceItem[];
+  photoUrl?: string;
+  damageNotes?: string;
+  price: number;
+}
+
+export interface Order {
+  id: string;
+  customerId?: string; // ID Akun Pelanggan terdaftar
+  customerName: string;
+  customerPhone: string;
+  shoeBrand: string;
+  shoeType: ShoeType;
+  material?: ShoeMaterial;
+  severity?: DamageSeverity;
+  pairsCount: number;
+  selectedServices: ServiceItem[];
+  shoes?: ShoeItemDetail[];
+  customNotes?: string;
+  photoUrl?: string;
+  photos?: string[];
+  pickupType: 'antar_jemput' | 'hanya_jemput' | 'drop_off';
+  preferredTimeSlot: 'pagi' | 'siang' | 'sore';
+  location: PickupLocation;
+  logisticsPartner?: LogisticsPartner;
+  distanceZone?: DistanceZone;
+  trackingNumber?: string; // Resi J&T Express
+  customerConfirmedMaterialPhoto?: boolean; // Konfirmasi foto bahan cocok
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  totalServicesPrice: number;
+  deliveryFee: number;
+  totalAmount: number;
+  status: OrderStatus;
+  createdAt: string;
+  estimatedFinishedAt: string;
+  technicianName: string;
+  timeline: OrderTimelineStep[];
+  isAcceptedByAdmin?: boolean;
+  acceptedAt?: string;
+  assignedCourier?: string;
+  assignedCourierPhone?: string;
+  internalAdminNotes?: string;
+}
+
+export interface CustomerUser {
+  id: string;
+  name: string;
+  phone: string; // No WhatsApp terverifikasi
+  email?: string;
+  savedArea?: string;
+  savedAddress?: string;
+  createdAt: string;
+  lastLogin: string;
+  securityBadge: string;
+  verified: boolean;
+}
+
+export interface AdminUser {
+  email: string;
+  name: string;
+  role: string;
+  loggedAt?: string;
+}
+
+export interface CourierUser {
+  username: string;
+  name: string;
+  role: string;
+  loggedAt?: string;
+}
+
+export interface CirebonArea {
+  name: string;
+  type: 'Kota' | 'Kabupaten';
+  deliveryFee: number;
+  estimatedPickupHours: string;
+}

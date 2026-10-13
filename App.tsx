@@ -1,0 +1,609 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Navbar } from './components/Navbar';
+import { Hero } from './components/Hero';
+import { DamageCatalog } from './components/DamageCatalog';
+import { PickupOrderSection } from './components/PickupOrderSection';
+import { DashboardView } from './components/DashboardView';
+import { AdminDashboard } from './components/AdminDashboard';
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { CourierDashboard } from './components/CourierDashboard';
+import { CourierLoginModal } from './components/CourierLoginModal';
+import { WorkshopLocationSection } from './components/WorkshopLocationSection';
+import { TestimonialsAndFaq } from './components/TestimonialsAndFaq';
+import { CustomerTrackerModal } from './components/CustomerTrackerModal';
+import { StaffAccessModal } from './components/StaffAccessModal';
+import { CustomerAuthModal } from './components/CustomerAuthModal';
+import { CustomerProfileDrawer } from './components/CustomerProfileDrawer';
+import { WaConsultationBotModal } from './components/WaConsultationBotModal';
+import { SolemanQrModal } from './components/SolemanQrModal';
+import { SolemanLogo } from './components/SolemanLogo';
+import { Footer } from './components/Footer';
+import { INITIAL_ORDERS, WORKSHOP_INFO, SERVICES_CATALOG } from './data/solcreftData';
+import { Order, OrderStatus, ServiceItem, ShoeType, AdminUser, CourierUser, CustomerUser, PaymentStatus } from './types';
+import { adminAuthService } from './services/adminAuthService';
+import { courierAuthService } from './services/courierAuthService';
+import { customerAuthService } from './services/customerAuthService';
+import { MessageSquare, Phone, Truck, Lock, ShieldCheck, CheckCircle2, Bot, LogOut, Wrench, Search, MapPin } from 'lucide-react';
+
+const STORAGE_KEY = 'solcreft_orders_cirebon_v1';
+
+export const App: React.FC = () => {
+  // Orders State (loaded from localStorage or initialized with realistic Cirebon sample orders)
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load orders from localStorage', e);
+    }
+    return INITIAL_ORDERS;
+  });
+
+  // Admin Authentication State
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {
+    return adminAuthService.getCurrentUser();
+  });
+  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+
+  // Courier Authentication State
+  const [courierUser, setCourierUser] = useState<CourierUser | null>(() => {
+    return courierAuthService.getCurrentUser();
+  });
+  const [isCourierLoginModalOpen, setIsCourierLoginModalOpen] = useState(false);
+  const [isStaffAccessModalOpen, setIsStaffAccessModalOpen] = useState(false);
+
+  // Customer Authentication State (Sederhana & Berkeamanan Tinggi)
+  const [customerUser, setCustomerUser] = useState<CustomerUser | null>(() => {
+    return customerAuthService.getCurrentUser();
+  });
+  const [isCustomerAuthModalOpen, setIsCustomerAuthModalOpen] = useState(false);
+  const [isCustomerProfileOpen, setIsCustomerProfileOpen] = useState(false);
+
+  // WhatsApp Damage Consultation Bot Modal State
+  const [isWaBotModalOpen, setIsWaBotModalOpen] = useState(false);
+
+  // Workshop DANA & QRIS QR Code Modal State
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  // Navigation & Modal State
+  const [activeTab, setActiveTab] = useState<string>('layanan');
+  const [isTrackerOpen, setIsTrackerOpen] = useState(false);
+  const [trackerQuery, setTrackerQuery] = useState('');
+
+  // Preselected data for Pickup Section
+  const [preselectedServices, setPreselectedServices] = useState<ServiceItem[]>([]);
+  const [preselectedShoeType, setPreselectedShoeType] = useState<ShoeType>('Sneakers');
+  const [preselectedPairsCount, setPreselectedPairsCount] = useState<number>(1);
+  const [preselectedArea, setPreselectedArea] = useState<string>('');
+
+  // Count pending unaccepted orders
+  const pendingOrdersCount = orders.filter(o => !o.isAcceptedByAdmin).length;
+
+  // Persist orders to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+    } catch (e) {
+      console.warn('Failed to save orders to localStorage', e);
+    }
+  }, [orders]);
+
+  // Handle adding new order
+  const handleOrderCreated = (newOrder: Order) => {
+    const orderWithCustomer = customerUser && !newOrder.customerId
+      ? { ...newOrder, customerId: customerUser.id }
+      : newOrder;
+    setOrders(prev => [orderWithCustomer, ...prev]);
+  };
+
+  // Handle accepting order by Admin
+  const handleAcceptOrder = (orderId: string, courierName: string = 'Kurir Soleman', courierPhone: string = '08814519955') => {
+    const timeStr = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+
+      const acceptTimeline = {
+        status: 'perjalanan_workshop' as OrderStatus,
+        label: 'Pesanan Diterima Admin',
+        timestamp: timeStr,
+        description: `Pesanan diterima & dikonfirmasi oleh Admin. ${courierName} ditugaskan untuk penjemputan.`
+      };
+
+      return {
+        ...order,
+        isAcceptedByAdmin: true,
+        acceptedAt: timeStr + ' WIB',
+        assignedCourier: courierName,
+        assignedCourierPhone: courierPhone,
+        status: 'perjalanan_workshop' as OrderStatus,
+        timeline: [acceptTimeline, ...order.timeline]
+      };
+    }));
+  };
+
+  // Handle rejecting order by Admin
+  const handleRejectOrder = (orderId: string, reason: string) => {
+    const timeStr = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+
+      const rejectTimeline = {
+        status: 'menunggu_jemput' as OrderStatus,
+        label: 'Pesanan Dibatalkan',
+        timestamp: timeStr,
+        description: `Pesanan dibatalkan/ditolak admin: ${reason}`
+      };
+
+      return {
+        ...order,
+        isAcceptedByAdmin: false,
+        customNotes: (order.customNotes ? order.customNotes + ' • ' : '') + `[Admin: ${reason}]`,
+        timeline: [rejectTimeline, ...order.timeline]
+      };
+    }));
+  };
+
+  // Handle updating order status (from Dashboard Kurir / Admin)
+  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus, customNote?: string) => {
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+
+      const newTimelineItem = {
+        status: newStatus,
+        label: getStatusShortLabel(newStatus),
+        timestamp: new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
+        description: customNote || getDefaultStatusDescription(newStatus, order)
+      };
+
+      return {
+        ...order,
+        status: newStatus,
+        timeline: [newTimelineItem, ...order.timeline]
+      };
+    }));
+  };
+
+  // Handle updating payment status (from Courier or Admin)
+  const handleUpdatePaymentStatus = (orderId: string, paymentStatus: PaymentStatus) => {
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      return {
+        ...order,
+        paymentStatus
+      };
+    }));
+  };
+
+  const getStatusShortLabel = (status: OrderStatus): string => {
+    switch (status) {
+      case 'menunggu_jemput': return 'Jadwal Penjemputan';
+      case 'perjalanan_workshop': return 'Kurir Membawa ke Workshop';
+      case 'pengerjaan': return 'Pengerjaan Servis';
+      case 'quality_check': return 'Quality Control Lolos';
+      case 'siap_antar': return 'Siap Diantar Kurir';
+      case 'selesai': return 'Selesai & Diterima Pelanggan';
+      default: return 'Update Progres';
+    }
+  };
+
+  const getDefaultStatusDescription = (status: OrderStatus, order: Order): string => {
+    switch (status) {
+      case 'menunggu_jemput':
+        return `Penjemputan dijadwalkan di ${order.location.areaName}.`;
+      case 'perjalanan_workshop':
+        return `Kurir Soleman sedang mengambil sepatu di ${order.location.fullAddress}.`;
+      case 'pengerjaan':
+        return `Sepatu ${order.shoeBrand} sedang ditangani teknisi dengan lem/jahit standar pabrik.`;
+      case 'quality_check':
+        return `Pemeriksaan kerapian dan sterilisasi anti-jamur selesai.`;
+      case 'siap_antar':
+        return `Sepatu selesai direparasi dan dijadwalkan pengantaran kembali oleh Kurir Soleman.`;
+      case 'selesai':
+        return `Sepatu telah diserahterimakan kepada ${order.customerName}. Garansi servis Soleman aktif.`;
+      default:
+        return 'Status diperbarui oleh sistem.';
+    }
+  };
+
+  // Flow handlers
+  const handleSelectServiceForPickup = (service: ServiceItem) => {
+    setPreselectedServices([service]);
+    handleScrollToSection('antar-jemput');
+  };
+
+  const handleSearchOrder = (query: string) => {
+    setTrackerQuery(query);
+    setIsTrackerOpen(true);
+  };
+
+  const handleScrollToSection = (sectionId: string) => {
+    setActiveTab(sectionId);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const yOffset = -80;
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
+  const handleAdminLoginSuccess = (user: AdminUser) => {
+    setAdminUser(user);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAdminLogout = () => {
+    adminAuthService.logout();
+    setAdminUser(null);
+  };
+
+  const handleCourierLoginSuccess = (user: CourierUser) => {
+    setCourierUser(user);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCourierLogout = () => {
+    courierAuthService.logout();
+    setCourierUser(null);
+  };
+
+  const handleCustomerLogout = () => {
+    customerAuthService.logout();
+    setCustomerUser(null);
+    setIsCustomerProfileOpen(false);
+  };
+
+  // =========================================================================
+  // 1. TAMPILAN KHUSUS ADMIN WORKSHOP (Fokus HANYA Fitur Admin, Tanpa Landing Pelanggan)
+  // =========================================================================
+  if (adminUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        {/* Dedicated Admin Portal Header Bar */}
+        <header className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-amber-500/30 px-4 py-3 shadow-xl">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <SolemanLogo size="sm" />
+              <div className="border-l border-slate-700 pl-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
+                    Portal Khusus Admin Workshop
+                  </span>
+                  <span className="text-xs font-bold text-white hidden sm:inline">Soleman Cirebon</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Login: <strong className="text-amber-400">{adminUser.name}</strong> ({adminUser.email})
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleAdminLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 font-bold text-xs transition-all"
+                title="Keluar dari portal Admin"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar (Logout Admin)</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Exclusive Admin Dashboard Area */}
+        <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+          <AdminDashboard
+            adminUser={adminUser}
+            orders={orders}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onAcceptOrder={handleAcceptOrder}
+            onRejectOrder={handleRejectOrder}
+            onLogout={handleAdminLogout}
+            onOpenCreateOrder={() => {}}
+            onOrderCreated={handleOrderCreated}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 2. TAMPILAN KHUSUS KURIR SOLEMAN (Fokus HANYA Fitur Kurir, Tanpa Landing Pelanggan)
+  // =========================================================================
+  if (courierUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        {/* Dedicated Courier Portal Header Bar */}
+        <header className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-amber-500/30 px-4 py-3 shadow-xl">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <SolemanLogo size="sm" />
+              <div className="border-l border-slate-700 pl-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
+                    Portal Khusus Kurir Soleman
+                  </span>
+                  <span className="text-xs font-bold text-white hidden sm:inline">Rute & Antar-Jemput</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Petugas Kurir: <strong className="text-amber-400">{courierUser.name}</strong> (@{courierUser.username})
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCourierLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 font-bold text-xs transition-all"
+                title="Keluar dari portal Kurir"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar (Logout Kurir)</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Exclusive Courier Dashboard Area */}
+        <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+          <CourierDashboard
+            courierUser={courierUser}
+            orders={orders}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onUpdatePaymentStatus={handleUpdatePaymentStatus}
+            onLogout={handleCourierLogout}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 3. TAMPILAN WEBSITE PELANGGAN (Menu Admin & Kurir Disembunyikan di Logo)
+  // =========================================================================
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      
+      {/* Navbar Pelanggan: Bersih tanpa tombol Admin/Kurir (Akses staf hanya via klik logo Soleman) */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={handleScrollToSection}
+        onOpenBooking={() => handleScrollToSection('antar-jemput')}
+        onOpenTracker={() => { setTrackerQuery(''); setIsTrackerOpen(true); }}
+        ordersCount={orders.length}
+        adminUser={null}
+        courierUser={null}
+        customerUser={customerUser}
+        onAdminLogout={handleAdminLogout}
+        onCourierLogout={handleCourierLogout}
+        onOpenStaffPortal={() => setIsStaffAccessModalOpen(true)}
+        onOpenCustomerAuth={() => setIsCustomerAuthModalOpen(true)}
+        onOpenCustomerProfile={() => setIsCustomerProfileOpen(true)}
+        onOpenQrModal={() => setIsQrModalOpen(true)}
+        onOpenWaBot={() => setIsWaBotModalOpen(true)}
+        pendingOrdersCount={pendingOrdersCount}
+      />
+
+      {/* Main Content Sections Pelanggan */}
+      <main className="flex-1 pb-24 lg:pb-0">
+        {/* 1. Hero Section dengan Quick Tracker & Bot WA */}
+        <Hero
+          onOpenBooking={() => handleScrollToSection('antar-jemput')}
+          onSearchOrder={handleSearchOrder}
+          onExploreServices={() => handleScrollToSection('layanan')}
+          onOpenDashboard={() => handleScrollToSection('dashboard')}
+          onOpenWaBot={() => setIsWaBotModalOpen(true)}
+        />
+
+        {/* 2. Full Damage Catalog & Repair Services (Termasuk Filter "Menu Terbaik", Jahit Sol & Ganti Tapak) */}
+        <DamageCatalog
+          onSelectServiceForPickup={handleSelectServiceForPickup}
+        />
+
+        {/* 3. Booking Antar-Jemput: Pisah Trail Rp 200rb & Gunung, Konfirmasi Foto WA, Jarak Logistik (Soleman/Grab/Maxim/J&T) */}
+        <PickupOrderSection
+          initialServices={preselectedServices}
+          initialShoeType={preselectedShoeType}
+          initialPairsCount={preselectedPairsCount}
+          initialArea={preselectedArea}
+          customerUser={customerUser}
+          onOrderCreated={handleOrderCreated}
+          onOpenDashboard={() => handleScrollToSection('dashboard')}
+        />
+
+        {/* 4. DASHBOARD PELANGGAN: Hanya Pelacakan Kode Seri Sepatu yang Tepat (Privasi Terjamin, Tanpa Order Lain) */}
+        <DashboardView
+          orders={orders}
+          onOpenBooking={() => handleScrollToSection('antar-jemput')}
+        />
+
+        {/* 5. Physical Workshop & Coverage Section Cirebon */}
+        <WorkshopLocationSection />
+
+        {/* 6. Testimonials & FAQs */}
+        <TestimonialsAndFaq />
+      </main>
+
+      {/* Footer Pelanggan (Logo dengan trigger staff tersembunyi) */}
+      <Footer 
+        onNavigate={handleScrollToSection} 
+        onStaffAccess={() => setIsStaffAccessModalOpen(true)} 
+      />
+
+      {/* Staff Secret Portal Modal (HANYA muncul jika logo Soleman diklik khusus) */}
+      <StaffAccessModal
+        isOpen={isStaffAccessModalOpen}
+        onClose={() => setIsStaffAccessModalOpen(false)}
+        onSelectAdminLogin={() => setIsAdminLoginModalOpen(true)}
+        onSelectCourierLogin={() => setIsCourierLoginModalOpen(true)}
+        adminUser={adminUser}
+        courierUser={courierUser}
+        onAdminLogout={handleAdminLogout}
+        onCourierLogout={handleCourierLogout}
+        onOpenDashboard={() => handleScrollToSection('dashboard')}
+      />
+
+      {/* Customer Tracking Modal */}
+      <CustomerTrackerModal
+        isOpen={isTrackerOpen}
+        onClose={() => setIsTrackerOpen(false)}
+        orders={orders}
+        initialQuery={trackerQuery}
+      />
+
+      {/* Admin Login Modal (password Hafidahcantik87) */}
+      <AdminLoginModal
+        isOpen={isAdminLoginModalOpen}
+        onClose={() => setIsAdminLoginModalOpen(false)}
+        onLoginSuccess={handleAdminLoginSuccess}
+      />
+
+      {/* Courier Login Modal (password Herdazabuza) */}
+      <CourierLoginModal
+        isOpen={isCourierLoginModalOpen}
+        onClose={() => setIsCourierLoginModalOpen(false)}
+        onLoginSuccess={handleCourierLoginSuccess}
+      />
+
+      {/* Customer Auth Modal (Daftar & Login Sederhana Standar Keamanan Tinggi FB) */}
+      <CustomerAuthModal
+        isOpen={isCustomerAuthModalOpen}
+        onClose={() => setIsCustomerAuthModalOpen(false)}
+        onAuthSuccess={(user) => {
+          setCustomerUser(user);
+          setIsCustomerAuthModalOpen(false);
+        }}
+      />
+
+      {/* Customer Profile Drawer */}
+      {customerUser && (
+        <CustomerProfileDrawer
+          isOpen={isCustomerProfileOpen}
+          onClose={() => setIsCustomerProfileOpen(false)}
+          customerUser={customerUser}
+          orders={orders}
+          onLogout={handleCustomerLogout}
+          onTrackOrder={(orderId) => {
+            setIsCustomerProfileOpen(false);
+            setTrackerQuery(orderId);
+            setIsTrackerOpen(true);
+          }}
+          onOpenBooking={() => {
+            setIsCustomerProfileOpen(false);
+            handleScrollToSection('antar-jemput');
+          }}
+        />
+      )}
+
+      {/* WhatsApp Damage Consultation Bot Modal (Konsultasi Kerusakan Sepatu Interaktif 24 Jam) */}
+      <WaConsultationBotModal
+        isOpen={isWaBotModalOpen}
+        onClose={() => setIsWaBotModalOpen(false)}
+        onBookService={(serviceId) => {
+          const found = SERVICES_CATALOG.find(s => s.id === serviceId);
+          if (found) {
+            setPreselectedServices([found]);
+            if (found.suitableShoes && found.suitableShoes.length > 0) {
+              setPreselectedShoeType(found.suitableShoes[0]);
+            }
+          }
+          setIsWaBotModalOpen(false);
+          handleScrollToSection('antar-jemput');
+        }}
+      />
+
+      {/* Workshop DANA & QRIS QR Code Modal */}
+      <SolemanQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+      />
+
+      {/* Floating Action Buttons: Bot WA AI + Chat WA Customer Support (Desktop) */}
+      <div className="hidden sm:flex fixed bottom-6 right-6 z-40 flex-col items-end gap-2.5">
+        {/* Floating Gemini AI Vision Konsultasi */}
+        <button
+          onClick={() => setIsWaBotModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs rounded-full shadow-2xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300/40 cursor-pointer"
+          title="Tanya Gemini AI & Unggah Foto Kerusakan Sepatu 24 Jam"
+        >
+          <Bot className="w-4 h-4 text-slate-950" />
+          <span>📸 Gemini AI Vision: Foto & Cek Menu</span>
+        </button>
+
+        {/* Floating Direct WhatsApp CS Workshop */}
+        <a
+          href={`https://wa.me/${WORKSHOP_INFO.phone}?text=${encodeURIComponent('Halo Soleman Cirebon! Mau tanya servis sepatu dan antar-jemput Kurir Soleman.')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-full shadow-2xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300/40"
+          title="Chat WhatsApp Soleman Cirebon: 0881-4519-955"
+        >
+          <MessageSquare className="w-4 h-4 fill-slate-950" />
+          <span>WA: 0881-4519-955</span>
+        </a>
+      </div>
+
+      {/* Mobile Native Bottom Navigation Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 px-3 py-2 flex items-center justify-around text-[10px] font-bold shadow-2xl">
+        <button
+          onClick={() => handleScrollToSection('layanan')}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-white"
+        >
+          <Wrench className="w-4 h-4 text-amber-400" />
+          <span>Menu</span>
+        </button>
+
+        <button
+          onClick={() => setIsWaBotModalOpen(true)}
+          className="flex flex-col items-center gap-1 text-amber-400 font-extrabold relative"
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-400 absolute top-0 right-1 animate-ping" />
+          <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+            <Bot className="w-4 h-4" />
+          </div>
+          <span>Foto AI</span>
+        </button>
+
+        {/* Featured Center Booking Button */}
+        <button
+          onClick={() => handleScrollToSection('antar-jemput')}
+          className="flex flex-col items-center gap-1 relative -top-3.5 group cursor-pointer"
+          title="Pesan Antar-Jemput Sepatu"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 absolute -top-1 -right-1 animate-ping" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300 group-hover:scale-110 active:scale-95 transition-all">
+            <Truck className="w-6 h-6 stroke-[2.5]" />
+          </div>
+          <span className="text-amber-300 font-black text-[10px] tracking-tight bg-slate-900/90 px-2 py-0.5 rounded-full border border-amber-400/50 shadow-sm">
+            Jemput
+          </span>
+        </button>
+
+        <button
+          onClick={() => { setTrackerQuery(''); setIsTrackerOpen(true); }}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-white"
+        >
+          <CheckCircle2 className="w-4 h-4 text-sky-400" />
+          <span>Lacak</span>
+        </button>
+
+        <button
+          onClick={() => handleScrollToSection('workshop')}
+          className="flex flex-col items-center gap-1 text-slate-400 hover:text-white"
+        >
+          <MapPin className="w-4 h-4 text-amber-400" />
+          <span>Lokasi</span>
+        </button>
+      </div>
+
+    </div>
+  );
+};
+
+export default App;

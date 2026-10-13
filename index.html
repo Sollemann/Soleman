@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        if (typeof window === 'undefined') return;
+        window.addEventListener('unhandledrejection', function(event) {
+          if (
+            event.reason &&
+            (String(event.reason?.message || '').includes('WebSocket') ||
+             String(event.reason?.stack || '').includes('@vite/client') ||
+             String(event.reason?.stack || '').includes('createWebSocketModuleRunnerTransport'))
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+        window.addEventListener('error', function(event) {
+          if (
+            String(event?.message || '').includes('WebSocket') ||
+            String(event?.filename || '').includes('@vite/client')
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+        try {
+          var OrigWS = window.WebSocket;
+          if (OrigWS) {
+            function MockHMRWebSocket(url, protocols) {
+              if (
+                protocols === 'vite-hmr' ||
+                (typeof url === 'string' && (url.includes('token=') || url.includes('vite')))
+              ) {
+                var target = new EventTarget();
+                target.readyState = 1;
+                target.OPEN = 1;
+                target.CLOSED = 3;
+                target.CLOSING = 2;
+                target.CONNECTING = 0;
+                target.send = function() {};
+                target.close = function() {};
+                setTimeout(function() {
+                  target.dispatchEvent(new Event('open'));
+                }, 0);
+                return target;
+              }
+              return new OrigWS(url, protocols);
+            }
+            MockHMRWebSocket.prototype = OrigWS.prototype;
+            MockHMRWebSocket.CONNECTING = 0;
+            MockHMRWebSocket.OPEN = 1;
+            MockHMRWebSocket.CLOSING = 2;
+            MockHMRWebSocket.CLOSED = 3;
+            window.WebSocket = MockHMRWebSocket;
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <title>Soleman - Perbaikan Sepatu Terlengkap di Cirebon</title>
+    <meta name="description" content="Soleman - Perbaikan sepatu terlengkap di Cirebon. Servis sol lepas, jahit sol benang tak kelihatan, ganti tapak trail & gunung, antar jemput Kurir Soleman & notifikasi WhatsApp." />
+    <meta property="og:title" content="Soleman - Perbaikan Sepatu Terlengkap di Cirebon" />
+    <meta property="og:description" content="Soleman - Perbaikan sepatu terlengkap di Cirebon. Servis sol lepas, jahit sol benang tak kelihatan, ganti tapak trail & gunung, antar jemput Kurir Soleman & notifikasi WhatsApp." />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Soleman" />
+    <meta name="theme-color" content="#020617" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cabinet+Grotesk:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 80px;
+        -ms-overflow-style: none;
+        scrollbar-width: thin;
+      }
+      
+      body {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #0b1120;
+        color: #f8fafc;
+        overflow-x: hidden;
+      }
+
+      .font-display {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        letter-spacing: -0.03em;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.0/",
+    "react": "https://esm.sh/react@^19.2.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.0/",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@^0.553.0",
+    "framer-motion": "https://esm.sh/framer-motion@^12.23.24"
+  }
+}
+</script>
+<link rel="stylesheet" href="./index.css">
+</head>
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>

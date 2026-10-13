@@ -1,0 +1,55 @@
+{
+  "id": "./",
+  "name": "Soleman - Servis Sepatu Cirebon",
+  "short_name": "Soleman Cirebon",
+  "description": "Aplikasi servis sepatu terlengkap di Cirebon. Dilengkapi konsultasi foto Gemini AI, katalog menu kerusakan, dan antar-jemput kurir.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Menu Servis & Kerusakan",
+      "short_name": "Menu Servis",
+      "description": "Lihat menu servis sepatu terbaik di Cirebon",
+      "url": "./#layanan",
+      "icons": [{ "src": "./icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Bot Gemini AI Vision",
+      "short_name": "Gemini AI",
+      "description": "Konsultasi kerusakan sepatu interaktif 24 jam dengan foto",
+      "url": "./#bot",
+      "icons": [{ "src": "./icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Pesan Antar-Jemput",
+      "short_name": "Jemput Sepatu",
+      "description": "Pesan Kurir Soleman jemput ke rumah",
+      "url": "./#antar-jemput",
+      "icons": [{ "src": "./icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}
