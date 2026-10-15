@@ -59,18 +59,89 @@
         } catch (e) {}
       })();
     </script>
-    <title>Soleman - Perbaikan Sepatu Terlengkap di Cirebon</title>
-    <meta name="description" content="Soleman - Perbaikan sepatu terlengkap di Cirebon. Servis sol lepas, jahit sol benang tak kelihatan, ganti tapak trail & gunung, antar jemput Kurir Soleman & notifikasi WhatsApp." />
-    <meta property="og:title" content="Soleman - Perbaikan Sepatu Terlengkap di Cirebon" />
-    <meta property="og:description" content="Soleman - Perbaikan sepatu terlengkap di Cirebon. Servis sol lepas, jahit sol benang tak kelihatan, ganti tapak trail & gunung, antar jemput Kurir Soleman & notifikasi WhatsApp." />
+    <title>Solcreft - Perbaikan Sepatu Terlengkap di Cirebon</title>
+    <meta name="description" content="Solcreft & Soleman - Perbaikan sepatu terlengkap di Cirebon. Workshop Jl. Sukalila Selatan, servis sol lepas, jahit sol tanam, ganti tapak outdoor & kulit, antar-jemput kurir se-Cirebon." />
+    <meta property="og:title" content="Solcreft - Perbaikan Sepatu Terlengkap di Cirebon" />
+    <meta property="og:description" content="Solcreft & Soleman - Perbaikan sepatu terlengkap di Cirebon. Workshop Jl. Sukalila Selatan, servis sol lepas, jahit sol tanam, ganti tapak outdoor & kulit, antar-jemput kurir se-Cirebon." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="id_ID" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Solcreft - Perbaikan Sepatu Terlengkap di Cirebon" />
+    <meta name="twitter:description" content="Workshop reparasi sepatu spesialis di Jl. Sukalila Selatan Cirebon. Antar-jemput kurir & konsultasi foto Gemini AI." />
     <link rel="manifest" href="./manifest.json" />
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <link rel="apple-touch-icon" href="./icon.svg" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Soleman" />
+    <meta name="apple-mobile-web-app-title" content="Solcreft" />
     <meta name="theme-color" content="#020617" />
+    
+    <!-- Schema.org JSON-LD LocalBusiness Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ShoeRepair",
+      "name": "Soleman & Solcreft Shoes Repair Cirebon",
+      "image": "/icon.svg",
+      "telephone": "+628814519955",
+      "priceRange": "Rp 25.000 - Rp 250.000",
+      "paymentAccepted": "Cash, QRIS, DANA, Bank Transfer",
+      "currenciesAccepted": "IDR",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Jl. Sukalila Selatan, Pekalangan, Kec. Pekalipan",
+        "addressLocality": "Kota Cirebon",
+        "addressRegion": "Jawa Barat",
+        "postalCode": "45118",
+        "addressCountry": "ID"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": -6.7175,
+        "longitude": 108.5630
+      },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+          ],
+          "opens": "09:00",
+          "closes": "21:00"
+        }
+      ],
+      "areaServed": [
+        "Kota Cirebon",
+        "Kabupaten Cirebon",
+        "Kuningan",
+        "Majalengka",
+        "Indramayu"
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "148"
+      }
+    }
+    </script>
+
+    <!-- Register PWA Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').catch(function(err) {
+            console.log('SW registration error:', err);
+          });
+        });
+      }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

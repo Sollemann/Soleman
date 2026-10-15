@@ -22,13 +22,16 @@ import { CustomerProfileDrawer } from './components/CustomerProfileDrawer';
 import { WaConsultationBotModal } from './components/WaConsultationBotModal';
 import { SolemanQrModal } from './components/SolemanQrModal';
 import { SolemanLogo } from './components/SolemanLogo';
+import { ShoeRestorationShowcase } from './components/ShoeRestorationShowcase';
+import { RepairCostCalculator } from './components/RepairCostCalculator';
 import { Footer } from './components/Footer';
 import { INITIAL_ORDERS, WORKSHOP_INFO, SERVICES_CATALOG } from './data/solcreftData';
 import { Order, OrderStatus, ServiceItem, ShoeType, AdminUser, CourierUser, CustomerUser, PaymentStatus } from './types';
 import { adminAuthService } from './services/adminAuthService';
 import { courierAuthService } from './services/courierAuthService';
 import { customerAuthService } from './services/customerAuthService';
-import { MessageSquare, Phone, Truck, Lock, ShieldCheck, CheckCircle2, Bot, LogOut, Wrench, Search, MapPin } from 'lucide-react';
+import { MessageSquare, Phone, Truck, Lock, ShieldCheck, CheckCircle2, Bot, LogOut, Wrench, Search, MapPin, WifiOff } from 'lucide-react';
+import { soundFx } from './services/soundEffects';
 
 const STORAGE_KEY = 'solcreft_orders_cirebon_v1';
 
@@ -212,9 +215,36 @@ export const App: React.FC = () => {
     }
   };
 
+  // Offline network status tracking
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' ? !navigator.onLine : false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Flow handlers
   const handleSelectServiceForPickup = (service: ServiceItem) => {
     setPreselectedServices([service]);
+    handleScrollToSection('antar-jemput');
+  };
+
+  const handleApplyEstimate = (data: {
+    services: ServiceItem[];
+    shoeType: ShoeType;
+    pairsCount: number;
+    areaName: string;
+  }) => {
+    setPreselectedServices(data.services);
+    setPreselectedShoeType(data.shoeType);
+    setPreselectedPairsCount(data.pairsCount);
+    setPreselectedArea(data.areaName);
     handleScrollToSection('antar-jemput');
   };
 
@@ -390,23 +420,42 @@ export const App: React.FC = () => {
         pendingOrdersCount={pendingOrdersCount}
       />
 
+      {/* Offline Alert Banner */}
+      {isOffline && (
+        <div className="bg-amber-600 text-slate-950 px-4 py-2 text-xs font-bold text-center flex items-center justify-center gap-2 shadow-inner">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          <span>Mode Offline Aktif: Koneksi internet terputus. Data Workshop Sukalila Cirebon & kontak darurat tetap dapat diakses.</span>
+        </div>
+      )}
+
       {/* Main Content Sections Pelanggan */}
       <main className="flex-1 pb-24 lg:pb-0">
-        {/* 1. Hero Section dengan Quick Tracker & Bot WA */}
+        {/* 1. Hero Section dengan Quick Tracker, Bot WA & Tombol Pintas */}
         <Hero
           onOpenBooking={() => handleScrollToSection('antar-jemput')}
           onSearchOrder={handleSearchOrder}
           onExploreServices={() => handleScrollToSection('layanan')}
           onOpenDashboard={() => handleScrollToSection('dashboard')}
           onOpenWaBot={() => setIsWaBotModalOpen(true)}
+          onOpenQrModal={() => setIsQrModalOpen(true)}
         />
 
-        {/* 2. Full Damage Catalog & Repair Services (Termasuk Filter "Menu Terbaik", Jahit Sol & Ganti Tapak) */}
+        {/* 2. Interactive Before-After Transformation Gallery */}
+        <ShoeRestorationShowcase
+          onSelectService={handleSelectServiceForPickup}
+        />
+
+        {/* 3. Instant Repair Cost & Time Calculator */}
+        <RepairCostCalculator
+          onApplyEstimate={handleApplyEstimate}
+        />
+
+        {/* 4. Full Damage Catalog & Repair Services (Termasuk Filter "Menu Terbaik", Jahit Sol & Ganti Tapak) */}
         <DamageCatalog
           onSelectServiceForPickup={handleSelectServiceForPickup}
         />
 
-        {/* 3. Booking Antar-Jemput: Pisah Trail Rp 200rb & Gunung, Konfirmasi Foto WA, Jarak Logistik (Soleman/Grab/Maxim/J&T) */}
+        {/* 5. Booking Antar-Jemput: Pisah Trail Rp 200rb & Gunung, Konfirmasi Foto WA, Jarak Logistik (Soleman/Grab/Maxim/J&T) */}
         <PickupOrderSection
           initialServices={preselectedServices}
           initialShoeType={preselectedShoeType}
@@ -417,16 +466,16 @@ export const App: React.FC = () => {
           onOpenDashboard={() => handleScrollToSection('dashboard')}
         />
 
-        {/* 4. DASHBOARD PELANGGAN: Hanya Pelacakan Kode Seri Sepatu yang Tepat (Privasi Terjamin, Tanpa Order Lain) */}
+        {/* 6. DASHBOARD PELANGGAN: Hanya Pelacakan Kode Seri Sepatu yang Tepat (Privasi Terjamin, Tanpa Order Lain) */}
         <DashboardView
           orders={orders}
           onOpenBooking={() => handleScrollToSection('antar-jemput')}
         />
 
-        {/* 5. Physical Workshop & Coverage Section Cirebon */}
+        {/* 7. Physical Workshop & Coverage Section Cirebon (Sukalila Selatan) */}
         <WorkshopLocationSection />
 
-        {/* 6. Testimonials & FAQs */}
+        {/* 8. Testimonials & FAQs + Write Review Form */}
         <TestimonialsAndFaq />
       </main>
 
